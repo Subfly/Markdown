@@ -625,4 +625,524 @@ class FrontMatterParserTest {
         assertIs<FrontMatter>(fm)
         assertEquals("toml", fm.format)
     }
+
+    @Test
+    fun should_only_parse_front_matter_at_document_start() {
+        val doc = parser.parse("Hello\n\n---\ntitle: Hello\n---")
+        val first = doc.children.first()
+        assertIs<Paragraph>(first)
+    }
+
+    @Test
+    fun should_parse_empty_yaml_front_matter() {
+        val doc = parser.parse("---\n---\n\nContent")
+        val fm = doc.children.first()
+        assertIs<FrontMatter>(fm)
+        assertEquals("yaml", fm.format)
+    }
+}
+
+// ────── 自动生成标题 ID ──────
+
+class HeadingIdTest {
+
+    private val parser = MarkdownParser()
+
+    @Test
+    fun should_auto_generate_heading_id() {
+        val doc = parser.parse("# Hello World")
+        val heading = doc.children.first()
+        assertIs<Heading>(heading)
+        assertNotNull(heading.autoId)
+        assertEquals("hello-world", heading.autoId)
+    }
+
+    @Test
+    fun should_use_custom_id_over_auto_id() {
+        val doc = parser.parse("# Hello World {#my-id}")
+        val heading = doc.children.first()
+        assertIs<Heading>(heading)
+        assertEquals("my-id", heading.customId)
+        assertEquals("my-id", heading.id)
+    }
+
+    @Test
+    fun should_deduplicate_heading_ids() {
+        val doc = parser.parse("# Hello\n\n# Hello")
+        val headings = doc.children.filterIsInstance<Heading>()
+        assertEquals(2, headings.size)
+        assertEquals("hello", headings[0].autoId)
+        assertEquals("hello-1", headings[1].autoId)
+    }
+
+    @Test
+    fun should_generate_id_for_setext_heading() {
+        val doc = parser.parse("Hello World\n===")
+        val heading = doc.children.first()
+        assertIs<SetextHeading>(heading)
+        assertNotNull(heading.autoId)
+        assertEquals("hello-world", heading.autoId)
+    }
+
+    @Test
+    fun should_handle_chinese_heading_id() {
+        val doc = parser.parse("# 你好世界")
+        val heading = doc.children.first()
+        assertIs<Heading>(heading)
+        assertNotNull(heading.autoId)
+        assertTrue(heading.autoId!!.contains("你好世界"))
+    }
+
+    @Test
+    fun should_handle_special_chars_in_heading_id() {
+        val doc = parser.parse("# Hello, World! How are you?")
+        val heading = doc.children.first()
+        assertIs<Heading>(heading)
+        assertNotNull(heading.autoId)
+        assertEquals("hello-world-how-are-you", heading.autoId)
+    }
+
+    @Test
+    fun should_generate_id_for_heading_with_inline_code() {
+        val doc = parser.parse("# The `main` function")
+        val heading = doc.children.first()
+        assertIs<Heading>(heading)
+        assertNotNull(heading.autoId)
+    }
+
+    @Test
+    fun should_generate_unique_ids_for_multiple_duplicates() {
+        val doc = parser.parse("# Foo\n\n# Foo\n\n# Foo")
+        val headings = doc.children.filterIsInstance<Heading>()
+        assertEquals(3, headings.size)
+        assertEquals("foo", headings[0].autoId)
+        assertEquals("foo-1", headings[1].autoId)
+        assertEquals("foo-2", headings[2].autoId)
+    }
+}
+
+// ────── 表格列数规范化 ──────
+
+class TableColumnNormalizationTest {
+
+    private val parser = MarkdownParser()
+
+    @Test
+    fun should_pad_missing_cells_with_empty() {
+        val input = "| A | B | C |\n| --- | --- | --- |\n| 1 | 2 |"
+        val doc = parser.parse(input)
+        val table = doc.children.first()
+        assertIs<Table>(table)
+
+        val body = table.children.filterIsInstance<TableBody>().first()
+        val row = body.children.first()
+        assertIs<TableRow>(row)
+        val cells = row.children.filterIsInstance<TableCell>()
+        assertEquals(3, cells.size)
+    }
+
+    @Test
+    fun should_truncate_extra_cells() {
+        val input = "| A | B |\n| --- | --- |\n| 1 | 2 | 3 |"
+        val doc = parser.parse(input)
+        val table = doc.children.first()
+        assertIs<Table>(table)
+
+        val body = table.children.filterIsInstance<TableBody>().first()
+        val row = body.children.first()
+        assertIs<TableRow>(row)
+        val cells = row.children.filterIsInstance<TableCell>()
+        assertEquals(2, cells.size)
+    }
+
+    @Test
+    fun should_not_interrupt_paragraph() {
+        val input = "Some paragraph text\n| A | B |\n| --- | --- |\n| 1 | 2 |"
+        val doc = parser.parse(input)
+        assertTrue(doc.children.size >= 1)
+    }
+
+    @Test
+    fun should_handle_single_column_table() {
+        val input = "| A |\n| --- |\n| 1 |\n| 2 |"
+        val doc = parser.parse(input)
+        val table = doc.children.first()
+        assertIs<Table>(table)
+        assertEquals(1, table.columnAlignments.size)
+    }
+
+    @Test
+    fun should_parse_table_with_escaped_pipe() {
+        val input = "| A | B |\n| --- | --- |\n| a \\| b | c |"
+        val doc = parser.parse(input)
+        val table = doc.children.first()
+        assertIs<Table>(table)
+    }
+}
+
+// ────── GFM 禁止 HTML ──────
+
+class GfmDisallowedHtmlTest {
+
+    private val parser = MarkdownParser()
+
+    @Test
+    fun should_filter_script_tag() {
+        val doc = parser.parse("<script>alert('xss')</script>")
+        val html = doc.children.first()
+        assertIs<HtmlBlock>(html)
+        assertTrue(html.literal.contains("filtered"))
+    }
+
+    @Test
+    fun should_filter_textarea_tag() {
+        val doc = parser.parse("<textarea>content</textarea>")
+        val html = doc.children.first()
+        assertIs<HtmlBlock>(html)
+        assertTrue(html.literal.contains("filtered"))
+    }
+
+    @Test
+    fun should_not_filter_safe_tags() {
+        val doc = parser.parse("<div>safe content</div>")
+        val html = doc.children.first()
+        assertIs<HtmlBlock>(html)
+        assertTrue(html.literal.contains("<div>"))
+        assertTrue(!html.literal.contains("filtered"))
+    }
+
+    @Test
+    fun should_filter_style_tag() {
+        val doc = parser.parse("<style>body{color:red}</style>")
+        val html = doc.children.first()
+        assertIs<HtmlBlock>(html)
+        assertTrue(html.literal.contains("filtered"))
+    }
+}
+
+// ────── TOC 占位符 ──────
+
+class TocPlaceholderTest {
+
+    private val parser = MarkdownParser()
+
+    @Test
+    fun should_parse_toc_placeholder() {
+        val doc = parser.parse("[TOC]")
+        val first = doc.children.first()
+        assertIs<TocPlaceholder>(first)
+    }
+
+    @Test
+    fun should_parse_toc_placeholder_double_bracket() {
+        val doc = parser.parse("[[toc]]")
+        val first = doc.children.first()
+        assertIs<TocPlaceholder>(first)
+    }
+
+    @Test
+    fun should_not_parse_toc_in_middle_of_text() {
+        val doc = parser.parse("some text [TOC] more text")
+        val first = doc.children.first()
+        assertIs<Paragraph>(first)
+    }
+
+    @Test
+    fun should_parse_toc_mixed_case_as_paragraph() {
+        // 解析器仅识别 [TOC] 和 [[toc]], 其他大小写变体解析为段落
+        val doc = parser.parse("[toc]")
+        val first = doc.children.first()
+        assertIs<Paragraph>(first)
+    }
+}
+
+// ────── 缩写定义 ──────
+
+class AbbreviationTest {
+
+    private val parser = MarkdownParser()
+
+    @Test
+    fun should_parse_abbreviation_definition() {
+        val input = "*[HTML]: Hyper Text Markup Language\n\nThe HTML specification."
+        val doc = parser.parse(input)
+        assertTrue(doc.abbreviationDefinitions.containsKey("HTML"))
+        assertEquals("Hyper Text Markup Language", doc.abbreviationDefinitions["HTML"]!!.fullText)
+    }
+
+    @Test
+    fun should_replace_abbreviation_in_text() {
+        val input = "*[HTML]: Hyper Text Markup Language\n\nThe HTML specification."
+        val doc = parser.parse(input)
+        val para = doc.children.filterIsInstance<Paragraph>().first()
+        assertTrue(para.children.any { it is Abbreviation })
+    }
+
+    @Test
+    fun should_not_replace_abbreviation_in_word() {
+        val input = "*[MD]: Markdown\n\nUse MYMD format."
+        val doc = parser.parse(input)
+        val para = doc.children.filterIsInstance<Paragraph>().first()
+        assertTrue(para.children.none { it is Abbreviation })
+    }
+
+    @Test
+    fun should_handle_multiple_abbreviation_definitions() {
+        val input = "*[HTML]: Hyper Text Markup Language\n*[CSS]: Cascading Style Sheets\n\nUse HTML and CSS."
+        val doc = parser.parse(input)
+        assertTrue(doc.abbreviationDefinitions.containsKey("HTML"))
+        assertTrue(doc.abbreviationDefinitions.containsKey("CSS"))
+    }
+}
+
+// ────── 可折叠内容（details/summary） ──────
+
+class CollapsibleContentTest {
+
+    private val parser = MarkdownParser()
+
+    @Test
+    fun should_parse_details_as_html_block() {
+        val input = "<details>\n<summary>Click me</summary>\nHidden content\n</details>"
+        val doc = parser.parse(input)
+        val html = doc.children.first()
+        assertIs<HtmlBlock>(html)
+        assertTrue(html.literal.contains("<details>"))
+        assertTrue(html.literal.contains("<summary>"))
+    }
+
+    @Test
+    fun should_parse_details_with_markdown_content() {
+        val input = "<details>\n<summary>Title</summary>\n\n**Bold** inside details\n\n</details>"
+        val doc = parser.parse(input)
+        assertTrue(doc.children.isNotEmpty())
+    }
+}
+
+// ────── 块引用额外测试 ──────
+
+class BlockQuoteExtendedTest {
+
+    private val parser = MarkdownParser()
+
+    @Test
+    fun should_parse_block_quote_with_list() {
+        val doc = parser.parse("> - item1\n> - item2")
+        val bq = doc.children.first()
+        assertIs<BlockQuote>(bq)
+        assertTrue(bq.children.any { it is ListBlock })
+    }
+
+    @Test
+    fun should_parse_lazy_continuation() {
+        val doc = parser.parse("> Paragraph\ncontinuation line")
+        val bq = doc.children.first()
+        assertIs<BlockQuote>(bq)
+    }
+
+    @Test
+    fun should_parse_empty_block_quote() {
+        val doc = parser.parse(">")
+        val bq = doc.children.first()
+        assertIs<BlockQuote>(bq)
+    }
+
+    @Test
+    fun should_parse_block_quote_with_code_block() {
+        val doc = parser.parse("> ```\n> code\n> ```")
+        val bq = doc.children.first()
+        assertIs<BlockQuote>(bq)
+        assertTrue(bq.children.any { it is FencedCodeBlock })
+    }
+}
+
+// ────── 列表额外测试 ──────
+
+class ListExtendedTest {
+
+    private val parser = MarkdownParser()
+
+    @Test
+    fun should_parse_nested_list() {
+        val doc = parser.parse("- Item 1\n  - Nested 1\n  - Nested 2\n- Item 2")
+        val list = doc.children.first()
+        assertIs<ListBlock>(list)
+        val items = list.children.filterIsInstance<ListItem>()
+        assertTrue(items.size >= 2)
+    }
+
+    @Test
+    fun should_detect_tight_list() {
+        val doc = parser.parse("- A\n- B\n- C")
+        val list = doc.children.first()
+        assertIs<ListBlock>(list)
+        assertTrue(list.tight)
+    }
+
+    @Test
+    fun should_detect_loose_list() {
+        val doc = parser.parse("- A\n\n- B\n\n- C")
+        val list = doc.children.first()
+        assertIs<ListBlock>(list)
+        assertTrue(!list.tight)
+    }
+
+    @Test
+    fun should_parse_ordered_list_starting_from_0() {
+        val doc = parser.parse("0. Zero\n1. One")
+        val list = doc.children.first()
+        assertIs<ListBlock>(list)
+        assertEquals(true, list.ordered)
+        assertEquals(0, list.startNumber)
+    }
+
+    @Test
+    fun should_parse_list_with_multiple_paragraphs() {
+        val doc = parser.parse("- Item 1\n\n  Continuation\n\n- Item 2")
+        val list = doc.children.first()
+        assertIs<ListBlock>(list)
+    }
+
+    @Test
+    fun should_parse_list_with_code_block() {
+        val doc = parser.parse("- Item\n\n  ```\n  code\n  ```\n\n- Item 2")
+        val list = doc.children.first()
+        assertIs<ListBlock>(list)
+    }
+}
+
+// ────── 缩进代码块测试 ──────
+
+class IndentedCodeBlockTest {
+
+    private val parser = MarkdownParser()
+
+    @Test
+    fun should_parse_indented_code_block() {
+        val doc = parser.parse("    code line 1\n    code line 2")
+        val block = doc.children.first()
+        assertIs<IndentedCodeBlock>(block)
+    }
+
+    @Test
+    fun should_not_parse_indented_code_inside_paragraph() {
+        // Paragraph continuation has higher priority
+        val doc = parser.parse("Paragraph\n    not code")
+        val first = doc.children.first()
+        assertIs<Paragraph>(first)
+    }
+
+    @Test
+    fun should_preserve_content_in_indented_code() {
+        val doc = parser.parse("    **not bold**\n    # not heading")
+        val block = doc.children.first()
+        assertIs<IndentedCodeBlock>(block)
+        assertTrue(block.literal.contains("**not bold**"))
+        assertTrue(block.literal.contains("# not heading"))
+    }
+}
+
+// ────── 数学块额外测试 ──────
+
+class MathBlockExtendedTest {
+
+    private val parser = MarkdownParser()
+
+    @Test
+    fun should_parse_multiline_math_block() {
+        val doc = parser.parse("$$\na = b + c\nd = e \\times f\n$$")
+        val math = doc.children.first()
+        assertIs<MathBlock>(math)
+        assertTrue(math.literal.contains("a = b + c"))
+        assertTrue(math.literal.contains("d = e \\times f"))
+    }
+
+    @Test
+    fun should_preserve_latex_commands_in_math_block() {
+        val doc = parser.parse("$$\n\\sum_{i=1}^{n} x_i\n$$")
+        val math = doc.children.first()
+        assertIs<MathBlock>(math)
+        assertTrue(math.literal.contains("\\sum"))
+    }
+
+    @Test
+    fun should_handle_empty_math_block() {
+        val doc = parser.parse("$$\n$$")
+        val math = doc.children.first()
+        assertIs<MathBlock>(math)
+    }
+}
+
+// ────── 脚注定义测试 ──────
+
+class FootnoteDefinitionTest {
+
+    private val parser = MarkdownParser()
+
+    @Test
+    fun should_parse_footnote_definition() {
+        val input = "[^note]: This is the footnote content.\n\nText with [^note]."
+        val doc = parser.parse(input)
+        assertTrue(doc.children.isNotEmpty())
+    }
+
+    @Test
+    fun should_parse_multiple_footnotes() {
+        val input = "[^1]: First note.\n[^2]: Second note.\n\nText [^1] and [^2]."
+        val doc = parser.parse(input)
+        assertTrue(doc.children.isNotEmpty())
+    }
+}
+
+// ────── 定义列表测试 ──────
+
+class DefinitionListTest {
+
+    private val parser = MarkdownParser()
+
+    @Test
+    fun should_parse_definition_list() {
+        val doc = parser.parse("Term\n: Definition")
+        assertTrue(doc.children.isNotEmpty())
+    }
+
+    @Test
+    fun should_parse_multiple_definitions() {
+        val doc = parser.parse("Term\n: Definition 1\n: Definition 2")
+        assertTrue(doc.children.isNotEmpty())
+    }
+
+    @Test
+    fun should_parse_multiple_terms_and_definitions() {
+        val doc = parser.parse("Term 1\n: Def 1\n\nTerm 2\n: Def 2")
+        assertTrue(doc.children.isNotEmpty())
+    }
+}
+
+// ────── Admonition 测试 ──────
+
+class AdmonitionTest {
+
+    private val parser = MarkdownParser()
+
+    @Test
+    fun should_parse_note_admonition() {
+        val doc = parser.parse("> [!NOTE]\n> This is a note.")
+        val bq = doc.children.first()
+        assertIs<BlockQuote>(bq)
+    }
+
+    @Test
+    fun should_parse_warning_admonition() {
+        val doc = parser.parse("> [!WARNING]\n> Be careful!")
+        val bq = doc.children.first()
+        assertIs<BlockQuote>(bq)
+    }
+
+    @Test
+    fun should_parse_tip_admonition() {
+        val doc = parser.parse("> [!TIP]\n> A useful tip.")
+        val bq = doc.children.first()
+        assertIs<BlockQuote>(bq)
+    }
 }

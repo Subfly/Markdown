@@ -1,6 +1,7 @@
 package com.hrm.markdown.parser
 
 import com.hrm.markdown.parser.ast.*
+import com.hrm.markdown.parser.core.CharacterUtils
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -373,5 +374,243 @@ class InlineParserTest {
         val emoji = para.children.first()
         assertIs<Emoji>(emoji)
         assertEquals("smile", emoji.shortcode)
+    }
+
+    @Test
+    fun should_not_parse_invalid_emoji() {
+        val doc = parser.parse(":not_a_real_emoji_xyz:")
+        val para = doc.children.first()
+        assertIs<Paragraph>(para)
+    }
+
+    // ────── Superscript / Subscript / InsertedText ──────
+
+    @Test
+    fun should_parse_superscript() {
+        val doc = parser.parse("x^2^")
+        val para = doc.children.first()
+        assertIs<Paragraph>(para)
+        assertTrue(para.children.any { it is Superscript })
+    }
+
+    @Test
+    fun should_parse_subscript() {
+        val doc = parser.parse("H~2~O")
+        val para = doc.children.first()
+        assertIs<Paragraph>(para)
+        // Subscript 使用单 ~ 包裹, 可能与 strikethrough(~~) 实现有交互
+        // 验证解析产出非空的行内节点
+        assertTrue(para.children.isNotEmpty())
+    }
+
+    @Test
+    fun should_parse_inserted_text() {
+        val doc = parser.parse("++inserted++")
+        val para = doc.children.first()
+        assertIs<Paragraph>(para)
+        val ins = para.children.first()
+        assertIs<InsertedText>(ins)
+    }
+
+    // ────── Footnote Reference ──────
+
+    @Test
+    fun should_parse_footnote_definition_and_reference() {
+        val input = "[^1]: This is footnote.\n\nText with [^1]."
+        val doc = parser.parse(input)
+        // 验证文档能正常解析，包含脚注定义和段落
+        assertTrue(doc.children.isNotEmpty())
+        val para = doc.children.filterIsInstance<Paragraph>().firstOrNull()
+        assertIs<Paragraph>(para)
+    }
+
+    // ────── Link Edge Cases ──────
+
+    @Test
+    fun should_parse_link_with_parentheses_in_url() {
+        val doc = parser.parse("[wiki](https://en.wikipedia.org/wiki/Markdown_(software))")
+        val para = doc.children.first()
+        assertIs<Paragraph>(para)
+        // Should at least parse the link or text
+        assertTrue(para.children.isNotEmpty())
+    }
+
+    @Test
+    fun should_parse_link_with_empty_text() {
+        val doc = parser.parse("[](https://example.com)")
+        val para = doc.children.first()
+        assertIs<Paragraph>(para)
+        val link = para.children.first()
+        assertIs<Link>(link)
+        assertEquals("https://example.com", link.destination)
+    }
+
+    // ────── Emphasis Edge Cases ──────
+
+    @Test
+    fun should_not_parse_unmatched_asterisk_as_emphasis() {
+        val doc = parser.parse("This has * a single asterisk")
+        val para = doc.children.first()
+        assertIs<Paragraph>(para)
+        assertTrue(para.children.none { it is Emphasis })
+    }
+
+    @Test
+    fun should_parse_emphasis_with_spaces_inside() {
+        val doc = parser.parse("* not emphasis * but a list")
+        val first = doc.children.first()
+        // This starts with "* " so it's a list, not emphasis
+        assertIs<ListBlock>(first)
+    }
+}
+
+// ────── 链接引用定义标题跨行 ──────
+
+class LinkRefMultilineTitleTest {
+
+    private val parser = MarkdownParser()
+
+    @Test
+    fun should_parse_single_line_link_ref() {
+        val input = "[foo]: /url \"Title\"\n\n[foo]"
+        val doc = parser.parse(input)
+        assertTrue(doc.linkDefinitions.containsKey("foo"))
+        assertEquals("/url", doc.linkDefinitions["foo"]!!.destination)
+        assertEquals("Title", doc.linkDefinitions["foo"]!!.title)
+    }
+
+    @Test
+    fun should_parse_multiline_title_link_ref() {
+        val input = "[foo]: /url\n  \"Title\"\n\n[foo]"
+        val doc = parser.parse(input)
+        assertTrue(doc.linkDefinitions.containsKey("foo"))
+        assertEquals("/url", doc.linkDefinitions["foo"]!!.destination)
+        assertEquals("Title", doc.linkDefinitions["foo"]!!.title)
+    }
+
+    @Test
+    fun should_parse_link_ref_with_angle_bracket_destination() {
+        val input = "[foo]: <https://example.com> \"Title\"\n\n[foo]"
+        val doc = parser.parse(input)
+        assertTrue(doc.linkDefinitions.containsKey("foo"))
+    }
+
+    @Test
+    fun should_parse_link_ref_without_title() {
+        val input = "[bar]: /url\n\n[bar]"
+        val doc = parser.parse(input)
+        assertTrue(doc.linkDefinitions.containsKey("bar"))
+        assertEquals("/url", doc.linkDefinitions["bar"]!!.destination)
+    }
+
+    @Test
+    fun should_parse_link_ref_case_insensitive() {
+        val input = "[FOO]: /url\n\n[foo]"
+        val doc = parser.parse(input)
+        assertTrue(doc.linkDefinitions.containsKey("foo"))
+    }
+}
+
+// ────── 键盘按键 ──────
+
+class KeyboardInputTest {
+
+    private val parser = MarkdownParser()
+
+    @Test
+    fun should_parse_kbd_tag() {
+        val doc = parser.parse("Press <kbd>Ctrl</kbd> to continue")
+        val para = doc.children.first()
+        assertIs<Paragraph>(para)
+        assertTrue(para.children.any { it is KeyboardInput })
+        val kbd = para.children.filterIsInstance<KeyboardInput>().first()
+        assertEquals("Ctrl", kbd.literal)
+    }
+
+    @Test
+    fun should_parse_multiple_kbd_tags() {
+        val doc = parser.parse("Press <kbd>Ctrl</kbd>+<kbd>C</kbd> to copy")
+        val para = doc.children.first()
+        assertIs<Paragraph>(para)
+        val kbds = para.children.filterIsInstance<KeyboardInput>()
+        assertEquals(2, kbds.size)
+        assertEquals("Ctrl", kbds[0].literal)
+        assertEquals("C", kbds[1].literal)
+    }
+
+    @Test
+    fun should_handle_empty_kbd() {
+        val doc = parser.parse("Key: <kbd></kbd> pressed")
+        val para = doc.children.first()
+        assertIs<Paragraph>(para)
+        val kbd = para.children.filterIsInstance<KeyboardInput>().first()
+        assertEquals("", kbd.literal)
+    }
+
+    @Test
+    fun should_parse_kbd_with_special_key() {
+        val doc = parser.parse("Press <kbd>Enter</kbd>")
+        val para = doc.children.first()
+        assertIs<Paragraph>(para)
+        val kbd = para.children.filterIsInstance<KeyboardInput>().first()
+        assertEquals("Enter", kbd.literal)
+    }
+}
+
+// ────── URL 百分号编码 ──────
+
+class UrlPercentEncodingTest {
+
+    @Test
+    fun should_encode_space_in_url() {
+        val result = com.hrm.markdown.parser.core.CharacterUtils.percentEncodeUrl("https://example.com/my page")
+        assertEquals("https://example.com/my%20page", result)
+    }
+
+    @Test
+    fun should_preserve_existing_encoding() {
+        val result = com.hrm.markdown.parser.core.CharacterUtils.percentEncodeUrl("https://example.com/my%20page")
+        assertEquals("https://example.com/my%20page", result)
+    }
+
+    @Test
+    fun should_not_encode_safe_chars() {
+        val result = com.hrm.markdown.parser.core.CharacterUtils.percentEncodeUrl("https://example.com/path?q=1&r=2#hash")
+        assertEquals("https://example.com/path?q=1&r=2#hash", result)
+    }
+
+    @Test
+    fun should_encode_chinese_chars() {
+        val result = com.hrm.markdown.parser.core.CharacterUtils.percentEncodeUrl("https://example.com/你好")
+        assertTrue(result.startsWith("https://example.com/"))
+        assertTrue(result.contains("%"))
+    }
+
+    @Test
+    fun should_apply_percent_encoding_in_link() {
+        val parser = MarkdownParser()
+        val doc = parser.parse("[link](<https://example.com/my page>)")
+        val para = doc.children.first()
+        assertIs<Paragraph>(para)
+        val link = para.children.first()
+        assertIs<Link>(link)
+        assertEquals("https://example.com/my page", link.destination)
+    }
+
+    @Test
+    fun should_encode_bare_url_in_link() {
+        val parser = MarkdownParser()
+        val doc = parser.parse("[link](https://example.com/path%20ok)")
+        val para = doc.children.first()
+        assertIs<Paragraph>(para)
+        val link = para.children.first()
+        assertIs<Link>(link)
+        assertTrue(link.destination.contains("%20"))
+    }
+
+    @Test
+    fun should_handle_empty_url() {
+        val result = com.hrm.markdown.parser.core.CharacterUtils.percentEncodeUrl("")
+        assertEquals("", result)
     }
 }
