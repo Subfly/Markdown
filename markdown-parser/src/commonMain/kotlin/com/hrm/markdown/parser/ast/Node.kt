@@ -24,6 +24,15 @@ sealed class Node {
     var contentHash: Long = 0L
 
     /**
+     * 用于 Compose `key()` 的稳定身份标识。
+     * 组合起始行号和内容哈希，确保：
+     * - 相同位置、相同内容的块 key 不变 → Compose 跳过重组
+     * - 不同位置或不同内容的块 key 不同 → 正确触发重组
+     */
+    val stableKey: Long
+        get() = lineRange.startLine.toLong() * 2654435761L + contentHash
+
+    /**
      * 接受访问者进行树遍历。
      */
     abstract fun <R> accept(visitor: NodeVisitor<R>): R

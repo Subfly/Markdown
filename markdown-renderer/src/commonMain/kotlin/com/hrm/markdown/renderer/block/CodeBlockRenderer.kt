@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
@@ -25,7 +26,7 @@ internal fun FencedCodeBlockRenderer(
     modifier: Modifier = Modifier,
 ) {
     val theme = LocalMarkdownTheme.current
-    val code = node.literal.trimEnd('\n')
+    val code = remember(node.literal) { node.literal.trimEnd('\n') }
 
     Box(
         modifier = modifier
@@ -51,7 +52,7 @@ internal fun IndentedCodeBlockRenderer(
     modifier: Modifier = Modifier,
 ) {
     val theme = LocalMarkdownTheme.current
-    val code = node.literal.trimEnd('\n')
+    val code = remember(node.literal) { node.literal.trimEnd('\n') }
 
     Box(
         modifier = modifier

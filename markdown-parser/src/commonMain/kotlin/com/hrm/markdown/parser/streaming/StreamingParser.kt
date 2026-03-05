@@ -348,18 +348,18 @@ class StreamingParser {
         if (blocks.isEmpty()) return Pair(emptyList(), emptyList())
         if (!_isStreaming) return Pair(blocks, emptyList())
 
-        // 最后一个块始终不稳定
-        if (blocks.size == 1) {
-            return Pair(emptyList(), blocks)
-        }
-
         val stable = mutableListOf<Node>()
         val open = mutableListOf<Node>()
 
         for (i in blocks.indices) {
             if (i == blocks.size - 1) {
-                // 最后一个块始终不稳定
-                open.add(blocks[i])
+                // 最后一个块：检查是否已被完整关闭且后跟空行
+                val lastBlock = blocks[i]
+                if (isBlockFullyClosed(lastBlock, source)) {
+                    stable.add(lastBlock)
+                } else {
+                    open.add(lastBlock)
+                }
             } else {
                 val block = blocks[i]
                 val nextBlock = blocks[i + 1]
@@ -380,6 +380,19 @@ class StreamingParser {
             }
         }
         return Pair(stable, open)
+    }
+
+    /**
+     * 检查一个块是否已被完整关闭且后面有空行分隔。
+     * 用于判断尾部的最后一个块是否可以标记为稳定。
+     *
+     * 条件：块的 endLine 之后（到文本末尾之间）存在空行。
+     */
+    private fun isBlockFullyClosed(block: Node, source: SourceText): Boolean {
+        val endLine = block.lineRange.endLine
+        // 块后面必须至少有一行空行才算完整隔开
+        if (endLine >= source.lineCount) return false
+        return hasBlankLineInRange(source, endLine, source.lineCount)
     }
 
     /**

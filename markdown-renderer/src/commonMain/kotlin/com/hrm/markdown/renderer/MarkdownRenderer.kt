@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.hrm.markdown.parser.MarkdownParser
@@ -103,7 +104,12 @@ internal fun InnerMarkdown(
                     verticalArrangement = Arrangement.spacedBy(theme.blockSpacing),
                 ) {
                     for (node in blockNodes) {
-                        BlockRenderer(node)
+                        // 使用 contentHash 作为稳定身份标识。
+                        // 当流式增量解析重建 Document 时，内容未变的块 contentHash 不变，
+                        // Compose 可以跳过这些块的重组，大幅减少代码块等长内容块的抖动。
+                        key(node.stableKey) {
+                            BlockRenderer(node)
+                        }
                     }
                 }
             }
@@ -130,7 +136,9 @@ internal fun MarkdownBlockChildren(
         verticalArrangement = Arrangement.spacedBy(theme.blockSpacing),
     ) {
         for (node in blockNodes) {
-            BlockRenderer(node)
+            key(node.stableKey) {
+                BlockRenderer(node)
+            }
         }
     }
 }
