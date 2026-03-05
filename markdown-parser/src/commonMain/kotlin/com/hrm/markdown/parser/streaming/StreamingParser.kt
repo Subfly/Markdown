@@ -493,6 +493,21 @@ class StreamingParser {
                 autoCloseTableCells(block, source)
                 return block
             }
+            is CustomContainer -> {
+                // 递归处理自定义容器的子节点
+                val children = block.children.toList()
+                if (children.isNotEmpty()) {
+                    val lastChild = children.last()
+                    val repaired = autoCloseBlock(lastChild, source)
+                    if (repaired !== lastChild) {
+                        block.replaceChild(lastChild, repaired)
+                    }
+                }
+                return block
+            }
+            is DiagramBlock -> {
+                return block
+            }
             else -> return block
         }
     }

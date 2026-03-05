@@ -26,6 +26,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +39,7 @@ import com.hrm.markdown.parser.ast.Document
 import com.hrm.markdown.renderer.Markdown
 import com.hrm.markdown.renderer.MarkdownTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 @Composable
@@ -188,16 +190,20 @@ private fun StreamingMarkdownDemo() {
             )
 
             // 流式生成时自动跟随滚动到底部
-            // 使用 scrollTo（瞬时）而非 animateScrollTo（动画），避免高频更新时动画互相取消导致抖动
+            // 监听 maxValue 变化（布局完成后才会更新），而非 doc 对象变化
             // 仅当用户没有手动上滑时（当前位置接近底部）才自动跟随
-            if (isRunning) {
-                LaunchedEffect(doc) {
-                    val isNearBottom = scrollState.maxValue == 0 ||
-                            scrollState.value >= scrollState.maxValue - 200
-                    if (isNearBottom) {
-                        scrollState.scrollTo(scrollState.maxValue)
+            LaunchedEffect(isRunning) {
+                if (!isRunning) return@LaunchedEffect
+                snapshotFlow { scrollState.maxValue }
+                    .distinctUntilChanged()
+                    .collect { maxValue ->
+                        if (maxValue > 0) {
+                            val isNearBottom = scrollState.value >= maxValue - 200
+                            if (isNearBottom) {
+                                scrollState.scrollTo(maxValue)
+                            }
+                        }
                     }
-                }
             }
         }
     }
@@ -1846,6 +1852,46 @@ Compose Multiplatform
 *[CSS]: Cascading Style Sheets
 
 HTML 和 CSS 是 Web 开发的基础技术。HTML 定义页面结构，CSS 负责样式。
+
+## 自定义容器
+
+::: note "提示信息"
+这是一个使用 `:::` 围栏语法创建的自定义容器。
+
+支持**完整的 Markdown 语法**，包括列表：
+- 项目一
+- 项目二
+:::
+
+::: warning
+未指定标题时，容器类型名作为默认标题显示。
+:::
+
+::::card
+:::note
+容器支持**嵌套**，外层使用更多冒号（`::::`）。
+:::
+::::
+
+## 图表块（Mermaid）
+
+```mermaid
+flowchart TD
+    A[Markdown 文本] --> B[BlockParser]
+    B --> C[AST 节点树]
+    C --> D[InlineParser]
+    D --> E[完整 AST]
+    E --> F[Compose 渲染]
+```
+
+```plantuml
+@startuml
+actor User
+User -> Parser : 输入 Markdown
+Parser -> AST : 生成节点树
+AST -> Renderer : 渲染 UI
+@enduml
+```
 
 ---
 

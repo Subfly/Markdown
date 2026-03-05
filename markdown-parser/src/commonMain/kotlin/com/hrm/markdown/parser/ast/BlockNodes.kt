@@ -262,3 +262,43 @@ class AbbreviationDefinition(
     override val literal: String get() = ""
     override fun <R> accept(visitor: NodeVisitor<R>): R = visitor.visitAbbreviationDefinition(this)
 }
+
+/**
+ * 自定义容器块：`:::type` 到 `:::`。
+ *
+ * 语法：
+ * ```
+ * ::: warning "标题"
+ * 容器内容（支持嵌套块级元素）
+ * :::
+ * ```
+ *
+ * 支持自定义类型、标题、CSS class/ID 属性，以及容器嵌套。
+ */
+class CustomContainer(
+    /** 容器类型，如 "warning"、"note"、"card" 等 */
+    var type: String = "",
+    /** 可选标题（引号内的文本） */
+    var title: String = "",
+    /** CSS class 列表，从 `{.class1 .class2}` 中提取 */
+    var cssClasses: List<String> = emptyList(),
+    /** CSS ID，从 `{#my-id}` 中提取 */
+    var cssId: String? = null,
+) : ContainerNode() {
+    override fun <R> accept(visitor: NodeVisitor<R>): R = visitor.visitCustomContainer(this)
+}
+
+/**
+ * 图表块：Mermaid / PlantUML 等图表代码块。
+ *
+ * 由围栏代码块中 info string 为 `mermaid`、`plantuml` 等关键字时自动转换。
+ * 内部不解析 Markdown 语法，保留原始图表代码供渲染引擎处理。
+ */
+class DiagramBlock(
+    /** 图表类型：如 "mermaid"、"plantuml" */
+    var diagramType: String = "",
+    /** 原始图表代码 */
+    override var literal: String = ""
+) : LeafNode() {
+    override fun <R> accept(visitor: NodeVisitor<R>): R = visitor.visitDiagramBlock(this)
+}

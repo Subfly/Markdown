@@ -1272,3 +1272,166 @@ class AdmonitionTest {
         assertIs<BlockQuote>(bq)
     }
 }
+
+// ────── CustomContainer 测试 ──────
+
+class CustomContainerTest {
+
+    private val parser = MarkdownParser()
+
+    @Test
+    fun should_parse_basic_custom_container() {
+        val doc = parser.parse(":::note\nThis is a note.\n:::")
+        val container = doc.children.first()
+        assertIs<CustomContainer>(container)
+        assertEquals("note", container.type)
+    }
+
+    @Test
+    fun should_parse_container_with_type() {
+        val doc = parser.parse(":::warning\nBe careful!\n:::")
+        val container = doc.children.first()
+        assertIs<CustomContainer>(container)
+        assertEquals("warning", container.type)
+    }
+
+    @Test
+    fun should_parse_container_with_title() {
+        val doc = parser.parse("::: note \"Important Note\"\nContent here.\n:::")
+        val container = doc.children.first()
+        assertIs<CustomContainer>(container)
+        assertEquals("note", container.type)
+        assertEquals("Important Note", container.title)
+    }
+
+    @Test
+    fun should_parse_container_with_css_classes() {
+        val doc = parser.parse("::: note{.custom-style .highlight}\nContent\n:::")
+        val container = doc.children.first()
+        assertIs<CustomContainer>(container)
+        assertTrue(container.cssClasses.contains("custom-style"))
+        assertTrue(container.cssClasses.contains("highlight"))
+    }
+
+    @Test
+    fun should_parse_container_with_css_id() {
+        val doc = parser.parse("::: note{#my-note}\nContent\n:::")
+        val container = doc.children.first()
+        assertIs<CustomContainer>(container)
+        assertEquals("my-note", container.cssId)
+    }
+
+    @Test
+    fun should_parse_container_with_block_content() {
+        val input = ":::note\n# Heading\n\nParagraph text.\n\n- Item 1\n- Item 2\n:::"
+        val doc = parser.parse(input)
+        val container = doc.children.first()
+        assertIs<CustomContainer>(container)
+        assertTrue(container.children.isNotEmpty())
+        assertTrue(container.children.any { it is Heading })
+    }
+
+    @Test
+    fun should_parse_nested_containers() {
+        val input = "::::outer\n:::inner\nNested content.\n:::\n::::"
+        val doc = parser.parse(input)
+        val outer = doc.children.first()
+        assertIs<CustomContainer>(outer)
+        assertEquals("outer", outer.type)
+        val inner = outer.children.filterIsInstance<CustomContainer>().firstOrNull()
+        assertNotNull(inner)
+        assertEquals("inner", inner.type)
+    }
+
+    @Test
+    fun should_parse_empty_container() {
+        val doc = parser.parse(":::note\n:::")
+        val container = doc.children.first()
+        assertIs<CustomContainer>(container)
+        assertEquals("note", container.type)
+    }
+
+    @Test
+    fun should_not_parse_less_than_three_colons() {
+        val doc = parser.parse("::not a container\nContent\n::")
+        val first = doc.children.first()
+        assertIs<Paragraph>(first)
+    }
+
+    @Test
+    fun should_close_container_at_end_of_document() {
+        val doc = parser.parse(":::note\nUnclosed container content.")
+        val container = doc.children.first()
+        assertIs<CustomContainer>(container)
+        assertEquals("note", container.type)
+    }
+
+    @Test
+    fun should_parse_container_with_title_and_attributes() {
+        val doc = parser.parse("::: warning \"Watch Out\" {.alert #warn-1}\nDangerous!\n:::")
+        val container = doc.children.first()
+        assertIs<CustomContainer>(container)
+        assertEquals("warning", container.type)
+        assertEquals("Watch Out", container.title)
+        assertTrue(container.cssClasses.contains("alert"))
+        assertEquals("warn-1", container.cssId)
+    }
+}
+
+// ────── DiagramBlock 测试 ──────
+
+class DiagramBlockTest {
+
+    private val parser = MarkdownParser()
+
+    @Test
+    fun should_convert_mermaid_block() {
+        val doc = parser.parse("```mermaid\nflowchart TD\n    A --> B\n```")
+        val diagram = doc.children.first()
+        assertIs<DiagramBlock>(diagram)
+        assertEquals("mermaid", diagram.diagramType)
+        assertTrue(diagram.literal.contains("flowchart TD"))
+    }
+
+    @Test
+    fun should_convert_plantuml_block() {
+        val doc = parser.parse("```plantuml\n@startuml\nactor User\n@enduml\n```")
+        val diagram = doc.children.first()
+        assertIs<DiagramBlock>(diagram)
+        assertEquals("plantuml", diagram.diagramType)
+        assertTrue(diagram.literal.contains("@startuml"))
+    }
+
+    @Test
+    fun should_not_convert_regular_code_block() {
+        val doc = parser.parse("```kotlin\nfun main() {}\n```")
+        val block = doc.children.first()
+        assertIs<FencedCodeBlock>(block)
+        assertEquals("kotlin", block.language)
+    }
+
+    @Test
+    fun should_convert_dot_graphviz_block() {
+        val doc = parser.parse("```dot\ndigraph G { A -> B }\n```")
+        val diagram = doc.children.first()
+        assertIs<DiagramBlock>(diagram)
+        assertEquals("dot", diagram.diagramType)
+    }
+
+    @Test
+    fun should_convert_case_insensitive() {
+        val doc = parser.parse("```Mermaid\nflowchart TD\n```")
+        val diagram = doc.children.first()
+        assertIs<DiagramBlock>(diagram)
+        assertEquals("mermaid", diagram.diagramType)
+    }
+
+    @Test
+    fun should_preserve_diagram_content() {
+        val content = "sequenceDiagram\n    Alice->>Bob: Hello\n    Bob-->>Alice: Hi"
+        val doc = parser.parse("```mermaid\n$content\n```")
+        val diagram = doc.children.first()
+        assertIs<DiagramBlock>(diagram)
+        assertTrue(diagram.literal.contains("Alice->>Bob"))
+    }
+}

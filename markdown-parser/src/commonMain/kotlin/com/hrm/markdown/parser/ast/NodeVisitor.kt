@@ -33,6 +33,9 @@ interface NodeVisitor<R> {
     fun visitTocPlaceholder(node: TocPlaceholder): R
     fun visitAbbreviationDefinition(node: AbbreviationDefinition): R
 
+    fun visitCustomContainer(node: CustomContainer): R
+    fun visitDiagramBlock(node: DiagramBlock): R
+
     // 行内节点
     fun visitText(node: Text): R
     fun visitSoftLineBreak(node: SoftLineBreak): R
@@ -90,6 +93,8 @@ abstract class DefaultNodeVisitor<R>(private val defaultValue: R) : NodeVisitor<
     override fun visitBlankLine(node: BlankLine): R = defaultValue
     override fun visitTocPlaceholder(node: TocPlaceholder): R = defaultValue
     override fun visitAbbreviationDefinition(node: AbbreviationDefinition): R = defaultValue
+    override fun visitCustomContainer(node: CustomContainer): R = defaultValue
+    override fun visitDiagramBlock(node: DiagramBlock): R = defaultValue
     override fun visitText(node: Text): R = defaultValue
     override fun visitSoftLineBreak(node: SoftLineBreak): R = defaultValue
     override fun visitHardLineBreak(node: HardLineBreak): R = defaultValue

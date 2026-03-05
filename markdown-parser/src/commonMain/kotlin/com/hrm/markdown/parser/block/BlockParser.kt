@@ -98,6 +98,9 @@ class BlockParser(
         // 后处理：缩写替换
         applyAbbreviations(document)
 
+        // 后处理：围栏代码块 → 图表块转换
+        convertDiagramBlocks(document)
+
         return document
     }
 
@@ -139,7 +142,7 @@ class BlockParser(
             } else {
                 // 检查块是否被关闭围栏/定界符关闭
                 // （围栏代码块、数学块或前置元数据）
-                if (ob.node is FencedCodeBlock || ob.node is MathBlock) {
+                if (ob.node is FencedCodeBlock || ob.node is MathBlock || ob.node is CustomContainer) {
                     closedByFenceOrMath = true
                 }
                 break
@@ -422,6 +425,19 @@ class BlockParser(
                     }
                 }
             }
+            is CustomContainer -> {
+                // 检查关闭围栏 `:::`（至少 3 个冒号，且长度 >= 开启围栏长度）
+                val snap = cursor.snapshot()
+                cursor.advanceSpaces(3)
+                val rest = cursor.rest().trim()
+                if (rest.length >= ob.fenceLength && rest.all { it == ':' }) {
+                    ob.lastLineIndex = currentLine
+                    cursor.restore(snap)
+                    return false
+                }
+                cursor.restore(snap)
+                true
+            }
             // 单行块，永远不继续
             is Heading -> false
             is SetextHeading -> false
@@ -443,6 +459,7 @@ class BlockParser(
             is Table -> true // 表格的 header 来自段落内容，属于段落转换而非打断
             is MathBlock -> true
             is DefinitionDescription -> true // 定义描述可以将段落转换为定义术语
+            is CustomContainer -> true // 自定义容器可以打断段落
             else -> true
         }
     }
@@ -475,6 +492,10 @@ class BlockParser(
 
         // 主题分隔线（必须在列表项之前检查）
         tryStartThematicBreak(cursor, lineIdx)?.let { return it }
+        cursor.restore(snap)
+
+        // 自定义容器 (::: syntax)
+        tryStartCustomContainer(cursor, lineIdx)?.let { return it }
         cursor.restore(snap)
 
         // 围栏代码块
@@ -1055,6 +1076,96 @@ class BlockParser(
         return ob
     }
 
+    private fun tryStartCustomContainer(cursor: LineCursor, lineIdx: Int): OpenBlock? {
+        val indent = cursor.advanceSpaces(3)
+        if (cursor.isAtEnd) return null
+
+        if (cursor.peek() != ':') return null
+
+        // 计算连续冒号数
+        var colonCount = 0
+        val snap = cursor.snapshot()
+        while (!cursor.isAtEnd && cursor.peek() == ':') {
+            cursor.advance()
+            colonCount++
+        }
+        if (colonCount < 3) return null
+
+        // 冒号后面可以跟：类型名、属性 {.class #id}、标题 "..."
+        val rest = cursor.rest().trim()
+        cursor.advance(cursor.remaining) // 消耗剩余内容
+
+        // 解析类型、标题和属性
+        var type = ""
+        var title = ""
+        var cssClasses = emptyList<String>()
+        var cssId: String? = null
+
+        if (rest.isNotEmpty()) {
+            val parsed = parseContainerInfo(rest)
+            type = parsed.type
+            title = parsed.title
+            cssClasses = parsed.cssClasses
+            cssId = parsed.cssId
+        }
+
+        val block = CustomContainer(
+            type = type,
+            title = title,
+            cssClasses = cssClasses,
+            cssId = cssId,
+        )
+        block.lineRange = LineRange(lineIdx, lineIdx + 1)
+
+        val ob = OpenBlock(block, contentStartLine = lineIdx, lastLineIndex = lineIdx)
+        ob.fenceChar = ':'
+        ob.fenceLength = colonCount
+        ob.fenceIndent = indent
+        return ob
+    }
+
+    private data class ContainerInfo(
+        val type: String,
+        val title: String,
+        val cssClasses: List<String>,
+        val cssId: String?,
+    )
+
+    private fun parseContainerInfo(info: String): ContainerInfo {
+        var remaining = info
+        var type = ""
+        var title = ""
+        val cssClasses = mutableListOf<String>()
+        var cssId: String? = null
+
+        // 提取属性块 {.class #id key=value}
+        val attrMatch = CONTAINER_ATTR_REGEX.find(remaining)
+        if (attrMatch != null) {
+            val attrContent = attrMatch.groupValues[1]
+            // 解析 .class
+            CONTAINER_CLASS_REGEX.findAll(attrContent).forEach {
+                cssClasses.add(it.groupValues[1])
+            }
+            // 解析 #id
+            CONTAINER_ID_REGEX.find(attrContent)?.let {
+                cssId = it.groupValues[1]
+            }
+            remaining = remaining.removeRange(attrMatch.range).trim()
+        }
+
+        // 提取标题 "..." 或 '...'
+        val titleMatch = CONTAINER_TITLE_REGEX.find(remaining)
+        if (titleMatch != null) {
+            title = titleMatch.groupValues[1].ifEmpty { titleMatch.groupValues[2] }
+            remaining = remaining.removeRange(titleMatch.range).trim()
+        }
+
+        // 剩余部分是类型名
+        type = remaining.trim().split("\\s+".toRegex()).firstOrNull() ?: ""
+
+        return ContainerInfo(type, title, cssClasses, cssId)
+    }
+
     // ────── 行处理 ──────
 
     private fun addLineToTip(tip: OpenBlock, cursor: LineCursor, lineIdx: Int) {
@@ -1122,7 +1233,7 @@ class BlockParser(
                 node.lineRange = LineRange(node.lineRange.startLine, lineIdx + 1)
             }
             is ListBlock, is ListItem, is BlockQuote, is Document,
-            is DefinitionList, is DefinitionDescription -> {
+            is DefinitionList, is DefinitionDescription, is CustomContainer -> {
                 // 容器块：创建新段落或处理懒延续
                 handleContainerLine(tip, cursor, lineIdx)
             }
@@ -1206,6 +1317,9 @@ class BlockParser(
             }
             is DefinitionList -> {
                 // 空行不立即结束定义列表，由子节点的终止来决定
+            }
+            is CustomContainer -> {
+                // 空行不终止自定义容器，由关闭围栏 ::: 决定
             }
             else -> {
                 // 其他块：空行
@@ -1306,6 +1420,9 @@ class BlockParser(
                 node.lineRange = LineRange(ob.contentStartLine, ob.lastLineIndex + 1)
             }
             is Table -> {
+                node.lineRange = LineRange(ob.contentStartLine, ob.lastLineIndex + 1)
+            }
+            is CustomContainer -> {
                 node.lineRange = LineRange(ob.contentStartLine, ob.lastLineIndex + 1)
             }
             is Document -> {
@@ -1781,6 +1898,33 @@ class BlockParser(
         }
     }
 
+    /**
+     * 后处理：将 info string 为 mermaid/plantuml 等的 FencedCodeBlock 转换为 DiagramBlock。
+     */
+    private fun convertDiagramBlocks(doc: Document) {
+        convertDiagramBlocksRecursive(doc)
+    }
+
+    private fun convertDiagramBlocksRecursive(node: Node) {
+        if (node is ContainerNode) {
+            val children = node.children.toList()
+            for (child in children) {
+                if (child is FencedCodeBlock && child.language.lowercase() in DIAGRAM_LANGUAGES) {
+                    val diagram = DiagramBlock(
+                        diagramType = child.language.lowercase(),
+                        literal = child.literal,
+                    )
+                    diagram.lineRange = child.lineRange
+                    diagram.sourceRange = child.sourceRange
+                    diagram.contentHash = child.contentHash
+                    node.replaceChild(child, diagram)
+                } else {
+                    convertDiagramBlocksRecursive(child)
+                }
+            }
+        }
+    }
+
     companion object {
         private val LINK_REF_DEF_REGEX = Regex(
             "^\\s{0,3}\\[([^\\]]+)\\]:\\s+(?:<([^>]*)>|(\\S+))(?:\\s+(?:\"([^\"]*)\"|'([^']*)'|\\(([^)]*)\\)))?\\s*$",
@@ -1819,6 +1963,21 @@ class BlockParser(
 
         /** Admonition 类型匹配：[!TYPE] 或 [!TYPE] title */
         private val ADMONITION_REGEX = Regex("^\\[!([A-Z]+)\\]\\s*(.*)")
+
+        /** 自定义容器属性块：{.class #id key=value} */
+        private val CONTAINER_ATTR_REGEX = Regex("\\{([^}]+)\\}")
+        /** 自定义容器 CSS class：.classname */
+        private val CONTAINER_CLASS_REGEX = Regex("\\.([a-zA-Z][a-zA-Z0-9_-]*)")
+        /** 自定义容器 CSS ID：#idname */
+        private val CONTAINER_ID_REGEX = Regex("#([a-zA-Z][a-zA-Z0-9_-]*)")
+        /** 自定义容器标题提取（双引号或单引号） */
+        private val CONTAINER_TITLE_REGEX = Regex("\"([^\"]*)\"|'([^']*)'")
+
+        /** 识别为图表块的围栏代码块语言标识 */
+        private val DIAGRAM_LANGUAGES = setOf(
+            "mermaid", "plantuml", "dot", "graphviz", "ditaa",
+            "flowchart", "sequence", "gantt", "pie", "mindmap",
+        )
 
         /** HTML 块类型检测（类型 1-7） */
         private val HTML_TYPE1_REGEX = Regex("^<(script|pre|style|textarea)(\\s|>|$)", RegexOption.IGNORE_CASE)

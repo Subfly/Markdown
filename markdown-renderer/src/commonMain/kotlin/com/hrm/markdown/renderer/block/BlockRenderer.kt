@@ -35,6 +35,8 @@ internal fun BlockRenderer(
         is Table -> TableRenderer(node, modifier)
         is MathBlock -> MathBlockRenderer(node, modifier)
         is Admonition -> AdmonitionRenderer(node, modifier)
+        is CustomContainer -> CustomContainerRenderer(node, modifier)
+        is DiagramBlock -> DiagramBlockRenderer(node, modifier)
         is DefinitionList -> DefinitionListRenderer(node, modifier)
         is FootnoteDefinition -> FootnoteDefinitionRenderer(node, modifier)
         is TocPlaceholder -> TocPlaceholderRenderer(modifier)

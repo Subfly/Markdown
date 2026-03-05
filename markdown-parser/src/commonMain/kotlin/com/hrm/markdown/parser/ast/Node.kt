@@ -25,12 +25,15 @@ sealed class Node {
 
     /**
      * 用于 Compose `key()` 的稳定身份标识。
-     * 组合起始行号和内容哈希，确保：
-     * - 相同位置、相同内容的块 key 不变 → Compose 跳过重组
-     * - 不同位置或不同内容的块 key 不同 → 正确触发重组
+     * 仅基于起始行号，确保：
+     * - 同一位置的块始终被 Compose 视为同一组件实例 → 复用组件、只更新内容
+     * - 不同位置的块 key 不同 → 正确分辨不同组件
+     *
+     * 注意：不包含 contentHash，因为流式输入时内容每个 token 都在变，
+     * 如果 key 跟着变，Compose 会销毁旧组件再创建新组件，导致"闪缩"和状态丢失。
      */
-    val stableKey: Long
-        get() = lineRange.startLine.toLong() * 2654435761L + contentHash
+    val stableKey: Int
+        get() = lineRange.startLine
 
     /**
      * 接受访问者进行树遍历。

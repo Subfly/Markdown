@@ -244,7 +244,28 @@
 - ✅ `---\n...\n---` YAML front matter
 - ✅ `+++\n...\n+++` TOML front matter
 
-**覆盖率**: 22/22 (100%)
+#### 自定义容器（Custom Container，扩展）
+- ✅ `:::\n内容\n:::` 基础容器语法（至少 3 个冒号）
+- ✅ `:::type` 指定容器类型
+- ✅ `:::type "标题"` 带标题的容器
+- ✅ `:::type{.class #id}` 带 CSS class/ID 属性的容器
+- ✅ 容器内支持完整的块级元素解析（标题、段落、列表、代码块等）
+- ✅ 容器嵌套（外层使用更多冒号如 `::::` 与内层 `:::` 区分）
+- ✅ 未闭合容器自动关闭到文档末尾
+
+> **备注**: `tryStartCustomContainer()` 识别 `:::` 围栏语法，解析容器类型、属性（class/ID）和标题。生成 `CustomContainer` AST 节点。容器作为 ContainerNode 允许内部块级解析。嵌套通过冒号数量匹配关闭围栏实现。
+
+#### 图表块（Diagram Block，扩展）
+- ✅ `` ```mermaid `` Mermaid 图表块
+- ✅ `` ```plantuml `` PlantUML 图表块
+- ✅ `` ```dot `` / `` ```graphviz `` Graphviz 图表块
+- ✅ 支持 `ditaa`、`flowchart`、`sequence`、`gantt`、`pie`、`mindmap` 等图表类型
+- ✅ 图表类型大小写不敏感
+- ✅ 图表代码原样保留，不解析 Markdown 语法
+
+> **备注**: 后处理阶段 `convertDiagramBlocks()` 将 info string 匹配已知图表语言的 FencedCodeBlock 转换为 `DiagramBlock` AST 节点。渲染器以带类型标签的代码块形式展示，预留后续集成 Mermaid/PlantUML 渲染引擎的接口。
+
+**覆盖率**: 41/41 (100%)
 
 ---
 
@@ -525,7 +546,7 @@
 | 7 | 表格（GFM） | 11/11 | 0 | 100% |
 | 8 | HTML 块 | 10/10 | 0 | 100% |
 | 9 | 链接引用定义 | 12/12 | 0 | 100% |
-| 10 | 块级扩展 | 22/22 | 0 | 100% |
+| 10 | 块级扩展 | 41/41 | 0 | 100% |
 | 11 | 强调 | 13/13 | 0 | 100% |
 | 12 | 删除线（GFM） | 4/4 | 0 | 100% |
 | 13 | 行内代码 | 8/8 | 0 | 100% |
@@ -537,7 +558,7 @@
 | 19 | 行内扩展 | 21/21 | 0 | 100% |
 | 20 | 流式解析引擎 | 24/24 | 0 | 100% |
 | 21 | 字符与编码 | 6/6 | 0 | 100% |
-| | **总计** | **253/254** | **1** | **99.6%** |
+| | **总计** | **272/273** | **1** | **99.6%** |
 
 ---
 
@@ -547,8 +568,8 @@
 |------|------|----------|
 | [CommonMark Spec 0.31.2](https://spec.commonmark.org/0.31.2/) | Markdown 核心规范 | 1-9, 11, 13-18, 21 |
 | [GFM Spec 0.29](https://github.github.com/gfm/) | GitHub Flavored Markdown | 5（任务列表）、7（表格）、8（禁止 HTML）、12（删除线）、14（自动链接扩展） |
-| [Markdown Guide Extended Syntax](https://www.markdownguide.org/extended-syntax/) | 社区扩展语法参考 | 1（标题 ID）、10（定义列表/告示/TOC/Front Matter）、19（高亮/上标/下标/Emoji/缩写） |
-| 扩展语法（社区约定） | 脚注、数学公式、插入文本、键盘 | 10, 19 |
+| [Markdown Guide Extended Syntax](https://www.markdownguide.org/extended-syntax/) | 社区扩展语法参考 | 1（标题 ID）、10（定义列表/告示/TOC/Front Matter/自定义容器/图表块）、19（高亮/上标/下标/Emoji/缩写） |
+| 扩展语法（社区约定） | 脚注、数学公式、插入文本、键盘、自定义容器、图表嵌入 | 10, 19 |
 
 ---
 
@@ -570,9 +591,7 @@
 
 | 优先级 | 特性 | 语法示例 | 说明 |
 |--------|------|----------|------|
-| **P1** | 自定义容器/高级 Admonition | `:::note{.custom-style #my-note}\n内容\n:::` | 通用围栏容器语法，支持自定义类型、class/ID 属性、自定义标题、容器嵌套。现有 Admonition 仅支持固定类型（NOTE/TIP 等），自定义容器可满足文档/博客场景的个性化样式需求。解析器需识别 `:::` 围栏，生成 `CustomContainer` AST 节点 |
-| **P1** | 图表嵌入（Mermaid/PlantUML） | `` ```mermaid `` / `` ```plantuml `` | 扩展围栏代码块的 info string 识别，匹配 `mermaid`/`plantuml` 等关键字，生成专用 AST 节点（`MermaidBlock`/`PlantUMLBlock`），不解析内部语法，保留原始图表代码供渲染阶段调用引擎渲染 |
-| **P2** | 多列布局 | `:::columns\n:::column{width=50%}\n左列\n:::column{width=50%}\n右列\n:::` | 识别 `columns`/`column` 容器语法并解析列宽属性，维护列布局 AST 结构，解决 Markdown 原生无布局能力的痛点，适用于文档对比、图文排版场景 |
+| **P2** | 多列布局 | `:::columns\n:::column{width=50%}\n左列\n:::column{width=50%}\n右列\n:::` | 基于已实现的自定义容器语法，识别 `columns`/`column` 容器类型并解析列宽属性，维护列布局 AST 结构，解决 Markdown 原生无布局能力的痛点 |
 | **P2** | 目录高级配置 | `[TOC]\n:depth=2-4\n:exclude=#ignore\n:order=asc` | 解析 TOC 后的配置参数（深度范围、排除 ID、排序方式、ID 前缀），生成目录时按配置过滤/排序标题节点，满足精细化目录需求 |
 | **P3** | 分页符 | `***pagebreak***` | 解析分页符标记生成 `PageBreak` AST 节点，渲染器据此插入分页样式，针对 PDF 导出/打印场景 |
 
