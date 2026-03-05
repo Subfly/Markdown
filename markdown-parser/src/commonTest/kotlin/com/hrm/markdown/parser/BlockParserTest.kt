@@ -353,6 +353,44 @@ class ListParserTest {
     }
 
     @Test
+    fun should_not_include_marker_in_unordered_list_item_content() {
+        val doc = parser.parse("- 项目一\n- 项目二\n- 项目三")
+        val list = doc.children.first()
+        assertIs<ListBlock>(list)
+        val items = list.children.filterIsInstance<ListItem>()
+        assertEquals(3, items.size)
+
+        // 每个列表项内的段落文本不应包含 "- " 标记
+        items.forEachIndexed { index, item ->
+            val para = item.children.first()
+            assertIs<Paragraph>(para)
+            val text = para.children.first()
+            assertIs<Text>(text)
+            val expected = listOf("项目一", "项目二", "项目三")[index]
+            assertEquals(expected, text.literal, "Unordered list item $index should not contain marker")
+        }
+    }
+
+    @Test
+    fun should_not_include_marker_in_ordered_list_item_content() {
+        val doc = parser.parse("1. 第一步\n2. 第二步\n3. 第三步")
+        val list = doc.children.first()
+        assertIs<ListBlock>(list)
+        val items = list.children.filterIsInstance<ListItem>()
+        assertEquals(3, items.size)
+
+        // 每个列表项内的段落文本不应包含 "1." 等标记
+        items.forEachIndexed { index, item ->
+            val para = item.children.first()
+            assertIs<Paragraph>(para)
+            val text = para.children.first()
+            assertIs<Text>(text)
+            val expected = listOf("第一步", "第二步", "第三步")[index]
+            assertEquals(expected, text.literal, "Ordered list item $index should not contain marker")
+        }
+    }
+
+    @Test
     fun should_parse_unordered_list_asterisk() {
         val doc = parser.parse("* Item 1\n* Item 2")
         val list = doc.children.first()

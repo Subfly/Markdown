@@ -55,6 +55,8 @@ class SetextHeading(
  * 段落块：连续的非空行文本。
  */
 class Paragraph : ContainerNode() {
+    /** 解析阶段捕获的原始内容（已去除块级标记），供行内解析使用。 */
+    var rawContent: String? = null
     override fun <R> accept(visitor: NodeVisitor<R>): R = visitor.visitParagraph(this)
 }
 

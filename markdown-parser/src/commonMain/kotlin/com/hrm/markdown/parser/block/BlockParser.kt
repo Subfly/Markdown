@@ -1206,6 +1206,7 @@ class BlockParser(
                 } else {
                     ob.contentLines.clear()
                     ob.contentLines.add(remaining)
+                    node.rawContent = remaining
                 }
                 node.lineRange = LineRange(ob.contentStartLine, ob.lastLineIndex + 1)
             }
@@ -1489,6 +1490,10 @@ class BlockParser(
                 lines.joinToString("\n")
             }
             is Paragraph -> {
+                // 优先使用解析阶段已捕获的内容（已去除块级标记如列表标记）
+                if (node.rawContent != null) {
+                    return node.rawContent!!
+                }
                 val lines = (lr.startLine until lr.endLine).map { source.lineContent(it).trimStart() }
                 lines.joinToString("\n")
             }
