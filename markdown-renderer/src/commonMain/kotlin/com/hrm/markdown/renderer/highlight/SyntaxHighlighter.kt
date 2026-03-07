@@ -43,13 +43,24 @@ object SyntaxHighlighter {
         for (rule in rules) {
             val matches = rule.pattern.findAll(code)
             for (match in matches) {
-                val range = if (rule.groupIndex > 0 && rule.groupIndex < match.groupValues.size) {
-                    val group = match.groups[rule.groupIndex]
-                    if (group != null) group.range else match.range
+                val start: Int
+                val end: Int
+                if (rule.groupIndex > 0 && rule.groupIndex < match.groupValues.size) {
+                    val groupValue = match.groupValues[rule.groupIndex]
+                    if (groupValue.isNotEmpty()) {
+                        // MatchGroup.range is not available in common; compute offset manually
+                        val offset = match.value.indexOf(groupValue)
+                        start = match.range.first + offset
+                        end = start + groupValue.length
+                    } else {
+                        start = match.range.first
+                        end = match.range.last + 1
+                    }
                 } else {
-                    match.range
+                    start = match.range.first
+                    end = match.range.last + 1
                 }
-                spans.add(HighlightSpan(range.first, range.last + 1, rule.tokenType))
+                spans.add(HighlightSpan(start, end, rule.tokenType))
             }
         }
 
