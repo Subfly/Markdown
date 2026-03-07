@@ -13,11 +13,15 @@ import com.hrm.markdown.parser.block.BlockParser
  */
 class InlineParser(
     private val document: Document,
+    /** 自定义 Emoji 别名映射（shortcode → unicode），可由外部注入 */
+    private val customEmojiMap: Map<String, String> = emptyMap(),
+    /** 是否启用 ASCII 表情自动转换 */
+    private val enableAsciiEmoticons: Boolean = false,
 ) : BlockParser.InlineParserInterface {
 
     override fun parseInlines(content: String, parent: ContainerNode) {
         if (content.isEmpty()) return
-        val parser = InlineParserInstance(content, document)
+        val parser = InlineParserInstance(content, document, customEmojiMap, enableAsciiEmoticons)
         val nodes = parser.parse()
         for (node in nodes) {
             parent.appendChild(node)
@@ -40,6 +44,104 @@ class InlineParser(
         internal val GFM_URL_REGEX = Regex("""(?:https?://|www\.)[^\s<]*""")
         internal val GFM_EMAIL_REGEX = Regex("""[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*""")
         internal val KBD_REGEX = Regex("""<kbd>(.*?)</kbd>""", RegexOption.IGNORE_CASE)
+
+        /**
+         * 标准 Emoji 短代码到 Unicode 的映射表（常用子集）。
+         */
+        val STANDARD_EMOJI_MAP: Map<String, String> = mapOf(
+            "smile" to "😄", "laughing" to "😆", "blush" to "😊", "smiley" to "😃",
+            "relaxed" to "☺️", "smirk" to "😏", "heart_eyes" to "😍", "kissing_heart" to "😘",
+            "kissing_closed_eyes" to "😚", "flushed" to "😳", "relieved" to "😌", "satisfied" to "😆",
+            "grin" to "😁", "wink" to "😉", "stuck_out_tongue_winking_eye" to "😜",
+            "stuck_out_tongue_closed_eyes" to "😝", "grinning" to "😀", "kissing" to "😗",
+            "kissing_smiling_eyes" to "😙", "stuck_out_tongue" to "😛", "sleeping" to "😴",
+            "worried" to "😟", "frowning" to "😦", "anguished" to "😧", "open_mouth" to "😮",
+            "grimacing" to "😬", "confused" to "😕", "hushed" to "😯", "expressionless" to "😑",
+            "unamused" to "😒", "sweat_smile" to "😅", "sweat" to "😓", "disappointed_relieved" to "😥",
+            "weary" to "😩", "pensive" to "😔", "disappointed" to "😞", "confounded" to "😖",
+            "fearful" to "😨", "cold_sweat" to "😰", "persevere" to "😣", "cry" to "😢",
+            "sob" to "😭", "joy" to "😂", "astonished" to "😲", "scream" to "😱",
+            "tired_face" to "😫", "angry" to "😠", "rage" to "😡", "triumph" to "😤",
+            "sleepy" to "😪", "yum" to "😋", "mask" to "😷", "sunglasses" to "😎",
+            "dizzy_face" to "😵", "imp" to "👿", "smiling_imp" to "😈", "neutral_face" to "😐",
+            "no_mouth" to "😶", "innocent" to "😇", "alien" to "👽", "yellow_heart" to "💛",
+            "blue_heart" to "💙", "purple_heart" to "💜", "heart" to "❤️", "green_heart" to "💚",
+            "broken_heart" to "💔", "heartbeat" to "💓", "heartpulse" to "💗", "two_hearts" to "💕",
+            "revolving_hearts" to "💞", "cupid" to "💘", "sparkling_heart" to "💖",
+            "sparkles" to "✨", "star" to "⭐", "star2" to "🌟", "dizzy" to "💫",
+            "boom" to "💥", "collision" to "💥", "anger" to "💢", "exclamation" to "❗",
+            "question" to "❓", "grey_exclamation" to "❕", "grey_question" to "❔",
+            "zzz" to "💤", "dash" to "💨", "sweat_drops" to "💦", "notes" to "🎶",
+            "musical_note" to "🎵", "fire" to "🔥", "hankey" to "💩", "poop" to "💩",
+            "thumbsup" to "👍", "+1" to "👍", "thumbsdown" to "👎", "-1" to "👎",
+            "ok_hand" to "👌", "punch" to "👊", "fist" to "✊", "v" to "✌️",
+            "wave" to "👋", "hand" to "✋", "raised_hand" to "✋", "open_hands" to "👐",
+            "point_up" to "☝️", "point_down" to "👇", "point_left" to "👈", "point_right" to "👉",
+            "raised_hands" to "🙌", "pray" to "🙏", "point_up_2" to "👆", "clap" to "👏",
+            "muscle" to "💪", "metal" to "🤘", "fu" to "🖕", "walking" to "🚶",
+            "runner" to "🏃", "running" to "🏃", "couple" to "👫", "family" to "👪",
+            "two_men_holding_hands" to "👬", "two_women_holding_hands" to "👭",
+            "dancer" to "💃", "bow" to "🙇", "couplekiss" to "💏",
+            "couple_with_heart" to "💑", "massage" to "💆", "haircut" to "💇",
+            "nail_care" to "💅", "boy" to "👦", "girl" to "👧", "woman" to "👩",
+            "man" to "👨", "baby" to "👶", "older_woman" to "👵", "older_man" to "👴",
+            "cop" to "👮", "angel" to "👼", "princess" to "👸", "guardsman" to "💂",
+            "skull" to "💀", "feet" to "🐾", "lips" to "👄", "kiss" to "💋",
+            "droplet" to "💧", "ear" to "👂", "eyes" to "👀", "nose" to "👃",
+            "tongue" to "👅", "love_letter" to "💌", "ring" to "💍", "gem" to "💎",
+            "sunny" to "☀️", "cloud" to "☁️", "umbrella" to "☂️", "snowflake" to "❄️",
+            "snowman" to "⛄", "zap" to "⚡", "cyclone" to "🌀", "ocean" to "🌊",
+            "cat" to "🐱", "dog" to "🐶", "mouse" to "🐭", "hamster" to "🐹",
+            "rabbit" to "🐰", "wolf" to "🐺", "frog" to "🐸", "tiger" to "🐯",
+            "koala" to "🐨", "bear" to "🐻", "pig" to "🐷", "cow" to "🐮",
+            "boar" to "🐗", "monkey_face" to "🐵", "monkey" to "🐒", "horse" to "🐴",
+            "racehorse" to "🐎", "camel" to "🐫", "sheep" to "🐑", "elephant" to "🐘",
+            "snake" to "🐍", "bird" to "🐦", "penguin" to "🐧", "turtle" to "🐢",
+            "bug" to "🐛", "honeybee" to "🐝", "ant" to "🐜", "beetle" to "🐞",
+            "snail" to "🐌", "octopus" to "🐙", "fish" to "🐟", "whale" to "🐳",
+            "dolphin" to "🐬", "dragon" to "🐉", "rocket" to "🚀", "airplane" to "✈️",
+            "car" to "🚗", "taxi" to "🚕", "bus" to "🚌", "ambulance" to "🚑",
+            "fire_engine" to "🚒", "bike" to "🚲", "ship" to "🚢", "train" to "🚆",
+            "warning" to "⚠️", "checkered_flag" to "🏁", "crossed_flags" to "🎌",
+            "triangular_flag_on_post" to "🚩", "white_check_mark" to "✅", "x" to "❌",
+            "negative_squared_cross_mark" to "❎", "heavy_check_mark" to "✔️",
+            "heavy_multiplication_x" to "✖️", "heavy_plus_sign" to "➕",
+            "heavy_minus_sign" to "➖", "heavy_division_sign" to "➗",
+            "100" to "💯", "copyright" to "©️", "registered" to "®️", "tm" to "™️",
+            "lock" to "🔒", "unlock" to "🔓", "key" to "🔑", "bell" to "🔔",
+            "bookmark" to "🔖", "link" to "🔗", "radio_button" to "🔘",
+            "back" to "🔙", "end" to "🔚", "on" to "🔛", "soon" to "🔜",
+            "top" to "🔝", "memo" to "📝", "pencil" to "✏️", "book" to "📖",
+            "calendar" to "📅", "chart" to "📊", "clipboard" to "📋", "pushpin" to "📌",
+            "paperclip" to "📎", "email" to "📧", "phone" to "📱", "computer" to "💻",
+            "bulb" to "💡", "wrench" to "🔧", "hammer" to "🔨", "gear" to "⚙️",
+            "trophy" to "🏆", "medal" to "🏅", "tada" to "🎉", "gift" to "🎁",
+            "balloon" to "🎈", "party_popper" to "🎉", "confetti_ball" to "🎊",
+            "christmas_tree" to "🎄", "jack_o_lantern" to "🎃", "ghost" to "👻",
+            "santa" to "🎅", "coffee" to "☕", "beer" to "🍺", "wine_glass" to "🍷",
+            "pizza" to "🍕", "hamburger" to "🍔", "apple" to "🍎", "lemon" to "🍋",
+            "cherry" to "🍒", "grapes" to "🍇", "watermelon" to "🍉", "banana" to "🍌",
+            "peach" to "🍑", "strawberry" to "🍓", "cookie" to "🍪", "cake" to "🎂",
+            "ice_cream" to "🍨", "eyes_in_speech_bubble" to "👁️‍🗨️",
+            "thinking" to "🤔", "rofl" to "🤣", "hugs" to "🤗", "cowboy" to "🤠",
+            "clown_face" to "🤡", "nerd_face" to "🤓", "shushing_face" to "🤫",
+            "face_with_monocle" to "🧐", "skull_and_crossbones" to "☠️",
+        )
+
+        /**
+         * ASCII 表情到 Unicode 的映射表。
+         */
+        val ASCII_EMOTICON_MAP: Map<String, String> = mapOf(
+            ":)" to "😊", ":-)" to "😊", ":D" to "😃", ":-D" to "😃",
+            ";)" to "😉", ";-)" to "😉", ":P" to "😛", ":-P" to "😛",
+            ":p" to "😛", ":-p" to "😛", ":(" to "😞", ":-(" to "😞",
+            ":'(" to "😢", ":o" to "😮", ":-o" to "😮", ":O" to "😮",
+            ":-O" to "😮", "B)" to "😎", "B-)" to "😎", ":/" to "😕",
+            ":-/" to "😕", ":|" to "😐", ":-|" to "😐", ":*" to "😘",
+            ":-*" to "😘", "<3" to "❤️", "</3" to "💔", "XD" to "😆",
+            "xD" to "😆", ":>" to "😊", "8)" to "😎", "8-)" to "😎",
+            "o_O" to "😳", "O_o" to "😳",
+        )
     }
 }
 
@@ -50,6 +152,8 @@ class InlineParser(
 private class InlineParserInstance(
     private val input: String,
     private val document: Document,
+    private val customEmojiMap: Map<String, String> = emptyMap(),
+    private val enableAsciiEmoticons: Boolean = false,
 ) {
     // 链表包装 AST 节点
     private class LLNode(var astNode: Node) {
@@ -367,7 +471,13 @@ private class InlineParserInstance(
                 }
                 img
             } else {
-                Link(destination = linkResult.destination, title = linkResult.title)
+                val link = Link(destination = linkResult.destination, title = linkResult.title)
+                // 解析链接后的属性块 {rel="nofollow" target="_blank" download="file.pdf"}
+                val attrs = tryParseAttributes()
+                if (attrs != null) {
+                    link.attributes = attrs
+                }
+                link
             }
 
             // 收集方括号开始符和当前位置之间的节点
@@ -409,7 +519,13 @@ private class InlineParserInstance(
                 }
                 img
             } else {
-                Link(destination = refResult.first, title = refResult.second)
+                val link = Link(destination = refResult.first, title = refResult.second)
+                // 引用链接后也支持属性块
+                val attrs = tryParseAttributes()
+                if (attrs != null) {
+                    link.attributes = attrs
+                }
+                link
             }
 
             var cur = bracket.llNode.next
@@ -431,6 +547,28 @@ private class InlineParserInstance(
                 }
             }
             return
+        }
+
+        // 尝试自定义行内样式：[text]{.class style="..."} （非链接、非图片时）
+        if (!bracket.isImage) {
+            val styledResult = tryParseStyledText()
+            if (styledResult != null) {
+                processEmphasis(bracket.prevDelim)
+
+                val styledNode = StyledText(attributes = styledResult)
+
+                var cur = bracket.llNode.next
+                while (cur != null) {
+                    val next = cur.next
+                    removeLL(cur)
+                    styledNode.appendChild(cur.astNode)
+                    cur = next
+                }
+
+                bracket.llNode.astNode = styledNode
+                bracketTop = bracket.prev
+                return
+            }
         }
 
         // 不是链接
@@ -586,6 +724,15 @@ private class InlineParserInstance(
     private fun appendPossibleEmoji() {
         val pos = scanner.pos
         scanner.advance() // skip ':'
+
+        // 尝试 ASCII 表情匹配（如 :) :D 等）
+        if (enableAsciiEmoticons) {
+            val asciiResult = tryMatchAsciiEmoticon(pos)
+            if (asciiResult != null) {
+                return
+            }
+        }
+
         if (scanner.isAtEnd || !(scanner.peek().isLetterOrDigit() || scanner.peek() == '_' || scanner.peek() == '+' || scanner.peek() == '-')) {
             appendLL(Text(":"))
             return
@@ -599,12 +746,45 @@ private class InlineParserInstance(
         if (!scanner.isAtEnd && scanner.peek() == ':') {
             val name = input.substring(startName, scanner.pos)
             scanner.advance()
-            appendLL(Emoji(shortcode = name, literal = ":$name:"))
+            // 查找 Unicode 映射：先查自定义映射，再查标准映射
+            val unicode = customEmojiMap[name]
+                ?: InlineParser.STANDARD_EMOJI_MAP[name]
+            val emoji = Emoji(
+                shortcode = name,
+                literal = unicode ?: ":$name:",
+            )
+            emoji.unicode = unicode
+            appendLL(emoji)
             return
         }
 
         scanner.pos = pos + 1
         appendLL(Text(":"))
+    }
+
+    /**
+     * 尝试匹配 ASCII 表情符号（从当前 ':' 位置开始向前回溯检查）。
+     * 在 `:` 之后检查是否能构成 `:)` `:D` 等模式。
+     */
+    private fun tryMatchAsciiEmoticon(colonPos: Int): Boolean {
+        // 从 colonPos 开始，尝试匹配 ASCII 表情（最长匹配）
+        val maxLen = 4 // ASCII 表情最大长度
+        val remaining = input.length - colonPos
+        for (len in minOf(maxLen, remaining) downTo 2) {
+            val candidate = input.substring(colonPos, colonPos + len)
+            val unicode = InlineParser.ASCII_EMOTICON_MAP[candidate]
+            if (unicode != null) {
+                scanner.pos = colonPos + len
+                val emoji = Emoji(
+                    shortcode = candidate,
+                    literal = unicode,
+                )
+                emoji.unicode = unicode
+                appendLL(emoji)
+                return true
+            }
+        }
+        return false
     }
 
     private fun appendLineBreak() {
@@ -628,6 +808,30 @@ private class InlineParserInstance(
             if (c == '!' && scanner.peek(1) == '[') break
             if (c == '=' && scanner.peek(1) == '=') break
             if (c == '+' && scanner.peek(1) == '+') break
+
+            // ASCII 表情检测（非 : 开头的，如 ;) B) XD 等）
+            if (enableAsciiEmoticons && (c == ';' || c == 'B' || c == 'X' || c == 'x' || c == '8' || c == 'O' || c == 'o')) {
+                val maxLen = 4
+                val remaining = input.length - scanner.pos
+                var matched = false
+                for (len in minOf(maxLen, remaining) downTo 2) {
+                    val candidate = input.substring(scanner.pos, scanner.pos + len)
+                    val unicode = InlineParser.ASCII_EMOTICON_MAP[candidate]
+                    if (unicode != null) {
+                        if (sb.isNotEmpty()) {
+                            appendLL(Text(sb.toString()))
+                            sb.clear()
+                        }
+                        scanner.pos += len
+                        val emoji = Emoji(shortcode = candidate, literal = unicode)
+                        emoji.unicode = unicode
+                        appendLL(emoji)
+                        matched = true
+                        break
+                    }
+                }
+                if (matched) return
+            }
 
             // GFM 自动链接检测（在任意位置触发，不仅仅是文本开头）
             if (c == 'h' || c == 'H' || c == 'w' || c == 'W') {
@@ -1006,6 +1210,17 @@ private class InlineParserInstance(
 
         scanner.pos = i
         return attrs
+    }
+
+    /**
+     * 尝试解析 `[text]{attrs}` 的属性部分。
+     * 即紧接 `]` 之后的 `{...}` 块，且前面没有 `(` 链接尾部。
+     * 返回属性映射，如果不匹配则返回 null。
+     */
+    private fun tryParseStyledText(): Map<String, String>? {
+        val pos = scanner.pos
+        if (pos >= input.length || input[pos] != '{') return null
+        return tryParseAttributes()
     }
 
     private data class LinkDestResult(val dest: String, val nextPos: Int, val isAngleBracket: Boolean)

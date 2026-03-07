@@ -33,7 +33,9 @@ import com.hrm.markdown.parser.streaming.InlineAutoCloser
  */
 class IncrementalEngine(
     private val flavour: MarkdownFlavour = ExtendedFlavour,
-    postProcessors: PostProcessorRegistry? = null
+    private val customEmojiMap: Map<String, String> = emptyMap(),
+    private val enableAsciiEmoticons: Boolean = false,
+    postProcessors: PostProcessorRegistry? = null,
 ) {
     companion object {
         private const val TAG = "IncrementalEngine"
@@ -182,7 +184,7 @@ class IncrementalEngine(
             registry = buildRegistry(newSource),
             inlineParserFactory = { doc ->
                 doc.linkDefinitions.putAll(_document.linkDefinitions)
-                InlineParser(doc)
+                InlineParser(doc, customEmojiMap, enableAsciiEmoticons)
             }
         )
 
@@ -248,7 +250,7 @@ class IncrementalEngine(
         val parser = BlockParser(
             source = _sourceText,
             registry = buildRegistry(_sourceText),
-            inlineParserFactory = { doc -> InlineParser(doc) }
+            inlineParserFactory = { doc -> InlineParser(doc, customEmojiMap, enableAsciiEmoticons) }
         )
         _document = parser.parse()
 
@@ -291,7 +293,7 @@ class IncrementalEngine(
             registry = buildRegistry(newSource),
             inlineParserFactory = { doc ->
                 doc.linkDefinitions.putAll(_document.linkDefinitions)
-                InlineParser(doc)
+                InlineParser(doc, customEmojiMap, enableAsciiEmoticons)
             }
         )
 
@@ -516,7 +518,7 @@ class IncrementalEngine(
         val repairedContent = inlineText + repairSuffix
         val tempDoc = Document()
         tempDoc.linkDefinitions.putAll(_document.linkDefinitions)
-        val inlineParser = InlineParser(tempDoc)
+        val inlineParser = InlineParser(tempDoc, customEmojiMap, enableAsciiEmoticons)
         node.clearChildren()
         inlineParser.parseInlines(repairedContent, node)
     }

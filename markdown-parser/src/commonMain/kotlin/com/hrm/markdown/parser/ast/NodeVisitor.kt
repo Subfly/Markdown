@@ -60,6 +60,7 @@ interface NodeVisitor<R> {
     fun visitSubscript(node: Subscript): R
     fun visitInsertedText(node: InsertedText): R
     fun visitEmoji(node: Emoji): R
+    fun visitStyledText(node: StyledText): R
     fun visitAbbreviation(node: Abbreviation): R
     fun visitKeyboardInput(node: KeyboardInput): R
 }
@@ -121,6 +122,7 @@ abstract class DefaultNodeVisitor<R>(private val defaultValue: R) : NodeVisitor<
     override fun visitSubscript(node: Subscript): R = defaultValue
     override fun visitInsertedText(node: InsertedText): R = defaultValue
     override fun visitEmoji(node: Emoji): R = defaultValue
+    override fun visitStyledText(node: StyledText): R = defaultValue
     override fun visitAbbreviation(node: Abbreviation): R = defaultValue
     override fun visitKeyboardInput(node: KeyboardInput): R = defaultValue
 }

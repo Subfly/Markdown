@@ -197,6 +197,9 @@ class FootnoteDefinition(
 
 /**
  * 数学公式块：`$$...$$`。
+ *
+ * 公式编号（`\tag{N}`）、环境自动编号（equation/align 等）、引用（`\ref`/`\eqref`）
+ * 均由 LaTeX 渲染库原生处理，literal 保留完整的 LaTeX 源文本。
  */
 class MathBlock(
     override var literal: String = ""

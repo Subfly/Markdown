@@ -55,10 +55,14 @@ import com.hrm.markdown.parser.streaming.StreamingParser
  * @param flavour Markdown 方言，控制支持的语法特性。默认为 [ExtendedFlavour]（包含所有扩展）。
  */
 class MarkdownParser(
-    val flavour: MarkdownFlavour = ExtendedFlavour
+    val flavour: MarkdownFlavour = ExtendedFlavour,
+    /** 自定义 Emoji 别名映射（shortcode → unicode） */
+    val customEmojiMap: Map<String, String> = emptyMap(),
+    /** 是否启用 ASCII 表情自动转换（如 :) → 😊） */
+    val enableAsciiEmoticons: Boolean = false,
 ) {
-    private val streamingParser = StreamingParser(flavour)
-    private val editEngine = IncrementalEngine(flavour)
+    private val streamingParser = StreamingParser(flavour, customEmojiMap, enableAsciiEmoticons)
+    private val editEngine = IncrementalEngine(flavour, customEmojiMap, enableAsciiEmoticons)
 
     /** 是否处于编辑模式（通过 edit API 操作过） */
     private var inEditMode = false

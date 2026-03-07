@@ -61,11 +61,25 @@ class InlineCode(
 
 /**
  * 行内链接：`[text](url "title")`。
+ *
+ * 支持扩展属性语法：
+ * - `[text](url){rel="nofollow" target="_blank"}` SEO/安全属性
+ * - `[text](url){download="file.pdf"}` 下载属性
  */
 class Link(
     var destination: String = "",
-    var title: String? = null
+    var title: String? = null,
+    /** 自定义属性映射，如 rel, target, download, class, id 等 */
+    var attributes: Map<String, String> = emptyMap(),
 ) : ContainerNode() {
+    /** CSS class 列表 */
+    val cssClasses: List<String>
+        get() = attributes["class"]?.split(" ")?.filter { it.isNotEmpty() } ?: emptyList()
+
+    /** CSS ID */
+    val cssId: String?
+        get() = attributes["id"]
+
     override fun <R> accept(visitor: NodeVisitor<R>): R = visitor.visitLink(this)
 }
 
@@ -188,12 +202,45 @@ class InsertedText : ContainerNode() {
 
 /**
  * Emoji 短代码：`:smile:`。
+ *
+ * 支持增强功能：
+ * - 标准短代码映射到 Unicode：`:smile:` → 😄
+ * - 自定义别名映射：`:my-emoji:` → 用户定义的字符
+ * - ASCII 表情自动转换：`:)` → 😊（由解析器在扫描阶段处理）
  */
 class Emoji(
     var shortcode: String = "",
     override var literal: String = ""
 ) : LeafNode() {
+    /** Unicode 字符（若映射成功） */
+    var unicode: String? = null
+
     override fun <R> accept(visitor: NodeVisitor<R>): R = visitor.visitEmoji(this)
+}
+
+/**
+ * 自定义行内样式：`[文本]{.class style="..."}` 或 `[文本]{.red .bold}`。
+ *
+ * 用于为行内文本添加自定义 CSS class、style 或其他属性，
+ * 补充 `==高亮==` 的局限性。
+ */
+class StyledText(
+    /** 自定义属性映射，如 class, style, id 等 */
+    var attributes: Map<String, String> = emptyMap(),
+) : ContainerNode() {
+    /** CSS class 列表 */
+    val cssClasses: List<String>
+        get() = attributes["class"]?.split(" ")?.filter { it.isNotEmpty() } ?: emptyList()
+
+    /** CSS ID */
+    val cssId: String?
+        get() = attributes["id"]
+
+    /** CSS style 字符串 */
+    val style: String?
+        get() = attributes["style"]
+
+    override fun <R> accept(visitor: NodeVisitor<R>): R = visitor.visitStyledText(this)
 }
 
 /**

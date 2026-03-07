@@ -37,13 +37,15 @@ import com.hrm.markdown.parser.log.HLog
  * @param flavour Markdown 方言，控制支持的语法特性
  */
 class StreamingParser(
-    flavour: MarkdownFlavour = ExtendedFlavour
+    flavour: MarkdownFlavour = ExtendedFlavour,
+    customEmojiMap: Map<String, String> = emptyMap(),
+    enableAsciiEmoticons: Boolean = false,
 ) {
     companion object {
         private const val TAG = "StreamingParser"
     }
 
-    private val engine = IncrementalEngine(flavour)
+    private val engine = IncrementalEngine(flavour, customEmojiMap, enableAsciiEmoticons)
 
     /** 当前文档 AST */
     val document: Document get() = engine.document

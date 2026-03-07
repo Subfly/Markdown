@@ -84,6 +84,10 @@ data class MarkdownTheme(
     val mathFontSize: Float = 16f,
     /** 数学公式块背景色 */
     val mathBlockBackground: Color = Color(0xFFF6F8FA),
+    /** 数学公式文字颜色（亮色模式） */
+    val mathColor: Color = Color(0xFF1F2328),
+    /** 数学公式文字颜色（暗色模式） */
+    val mathDarkColor: Color = Color(0xFFE6EDF3),
     /** Admonition 样式映射 */
     val admonitionStyles: Map<String, AdmonitionStyle> = defaultAdmonitionStyles(),
     /** 脚注文字样式 */

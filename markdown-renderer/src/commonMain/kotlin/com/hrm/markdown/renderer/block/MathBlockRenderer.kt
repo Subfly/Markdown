@@ -21,6 +21,9 @@ import com.hrm.markdown.renderer.LocalMarkdownTheme
 /**
  * 数学公式块渲染器 ($$...$$)
  * 使用 LaTeX 库渲染数学公式，通过 LatexMeasurer 预测量精确尺寸，避免多余空白。
+ *
+ * 公式编号（`\tag{N}`）、环境自动编号（equation/align 等）、引用（`\ref`/`\eqref`）
+ * 均由 LaTeX 渲染库原生处理，无需额外的编号展示逻辑。
  */
 @Composable
 internal fun MathBlockRenderer(
@@ -29,8 +32,12 @@ internal fun MathBlockRenderer(
 ) {
     val theme = LocalMarkdownTheme.current
     val latex = node.literal.trim()
+    // 将 color 和 darkColor 统一设为 mathColor，
+    // 避免 Latex 组件内部 isSystemInDarkTheme() 选错颜色导致文字与背景色对比度不足
     val config = LatexConfig(
         fontSize = (theme.mathFontSize * 1.2f).sp,
+        color = theme.mathColor,
+        darkColor = theme.mathColor,
     )
 
     // 使用 LatexMeasurer 精确测量公式高度，避免容器产生多余空白

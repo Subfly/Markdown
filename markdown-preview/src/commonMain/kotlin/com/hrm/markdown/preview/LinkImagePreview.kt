@@ -67,6 +67,34 @@ internal val linkImagePreviewGroups = listOf(
         )
     ),
     PreviewGroup(
+        id = "link_attributes",
+        title = "链接高级属性",
+        description = "链接后的 {attrs} 属性块",
+        items = listOf(
+            PreviewItem(
+                id = "link_nofollow",
+                title = "SEO 属性（nofollow）",
+                content = {
+                    Markdown(markdown = "外部链接：[Google](https://google.com){rel=\"nofollow\" target=\"_blank\"}")
+                }
+            ),
+            PreviewItem(
+                id = "link_download",
+                title = "下载属性",
+                content = {
+                    Markdown(markdown = "下载文件：[下载 PDF](https://example.com/doc.pdf){download=\"文档.pdf\"}")
+                }
+            ),
+            PreviewItem(
+                id = "link_with_class",
+                title = "带 CSS 类的链接",
+                content = {
+                    Markdown(markdown = "样式链接：[按钮链接](https://example.com){.btn .primary #main-link}")
+                }
+            ),
+        )
+    ),
+    PreviewGroup(
         id = "image_attributes",
         title = "图片属性",
         description = "CSS 类、ID、自定义属性",

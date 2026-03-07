@@ -61,6 +61,47 @@ $$
         )
     ),
     PreviewGroup(
+        id = "math_tag",
+        title = "公式编号",
+        description = "\\tag{N} 公式编号（LaTeX 原生渲染）",
+        items = listOf(
+            PreviewItem(
+                id = "math_tag_basic",
+                title = "基础公式编号",
+                content = {
+                    Markdown(
+                        markdown = """
+$$
+E = mc^2 \tag{1}
+$$
+
+质能方程见公式(1)。
+                        """.trimIndent()
+                    )
+                }
+            ),
+            PreviewItem(
+                id = "math_tag_multiple",
+                title = "多公式编号",
+                content = {
+                    Markdown(
+                        markdown = """
+$$
+a^2 + b^2 = c^2 \tag{eq:pythagoras}
+$$
+
+$$
+\frac{-b \pm \sqrt{b^2 - 4ac}}{2a} \tag{eq:quadratic}
+$$
+
+勾股定理见公式(eq:pythagoras)，求根公式见公式(eq:quadratic)。
+                        """.trimIndent()
+                    )
+                }
+            ),
+        )
+    ),
+    PreviewGroup(
         id = "math_in_context",
         title = "公式与文本混排",
         description = "公式嵌入在段落中",

@@ -228,6 +228,11 @@
 - ✅ `$$...$$` 多行数学公式
 - ✅ 单行 `$$ content $$`
 - ✅ 数学块内不解析 Markdown 语法
+- ✅ `\tag{N}` 公式编号（LaTeX 渲染库原生支持，literal 保留完整 LaTeX 文本）
+- ✅ `\begin{equation}...\end{equation}` 等环境自动编号（LaTeX 渲染库原生支持）
+- ✅ `\ref{}`/`\eqref{}` 公式引用（LaTeX 渲染库原生支持）
+
+> **备注**: 公式编号、环境自动编号和引用功能均由 LaTeX 渲染库（`io.github.huarangmeng:latex-renderer`）原生处理。Parser 层保留完整 LaTeX 文本，不做编号提取，交由 LaTeX 库的 `EquationNumbering` + `TagMeasurer` + `RefMeasurer` 完整处理编号生命周期。
 
 #### 定义列表（扩展）
 - ✅ 术语行（紧接定义前的非空行）
@@ -290,7 +295,7 @@
 
 > **备注**: `PageBreakStarter` 以优先级 205 注册，在 `ThematicBreak` 之前检测 `***pagebreak***` 模式（正则 `^\s{0,3}\*{3}pagebreak\*{3}\s*$`），生成 `PageBreak` AST 节点。渲染器以虚线分隔符样式展示，可适配 PDF 导出/打印场景的分页控制。
 
-**覆盖率**: 52/52 (100%)
+**覆盖率**: 55/55 (100%)
 
 ---
 
@@ -366,6 +371,15 @@
 - ✅ 链接文本内嵌套行内元素（粗体、斜体、代码、图片等）
 - ✅ 链接不能嵌套链接
 
+#### 链接高级属性（扩展）
+- ✅ `[text](url){rel="nofollow" target="_blank"}` 链接后属性块
+- ✅ `[text](url){download="file.pdf"}` 下载属性
+- ✅ 属性块支持 CSS class（`.classname`）、ID（`#idname`）、键值对（`key=value`）
+- ✅ 属性块支持带引号的值（`key="value"` / `key='value'`）
+- ✅ Link AST 节点携带 `attributes`、`cssClasses`、`cssId` 字段
+
+> **备注**: 复用 `tryParseAttributes()` 解析器，在链接解析完成后检测并解析 `{...}` 属性块。与图片属性块共享同一解析逻辑。
+
 #### 引用链接
 - ✅ `[text][label]` 完整引用链接
 - ✅ `[label][]` 折叠引用链接
@@ -382,7 +396,7 @@
 - ✅ GFM autolink 尾部标点截断规则（不含尾部 `.`, `)`, `;` 等）
 - ✅ URL 中特殊字符百分号编码（非尖括号 URL 自动编码，保留已有 `%XX` 序列）
 
-**覆盖率**: 21/21 (100%)
+**覆盖率**: 27/27 (100%)
 
 ---
 
@@ -508,11 +522,29 @@
 #### 插入文本（扩展）
 - ✅ `++text++` 插入标记（渲染为下划线/插入样式）
 
+#### 自定义行内样式（扩展）
+- ✅ `[文本]{.red .bold}` CSS class 行内样式
+- ✅ `[文本]{style="background:yellow"}` 内联 CSS 样式
+- ✅ `[文本]{#myid}` 自定义 ID
+- ✅ `[文本]{.class #id style="color:red"}` 混合属性
+- ✅ StyledText AST 节点携带 `attributes`、`cssClasses`、`cssId`、`style` 字段
+- ✅ 样式文本内支持嵌套行内元素（粗体、斜体、代码等）
+
+> **备注**: `[text]{attrs}` 语法在 `appendCloseBracket()` 中当方括号后紧跟 `{` 且非链接/图片/脚注时触发。复用 `tryParseAttributes()` 解析属性块，生成 `StyledText` ContainerNode。
+
 #### Emoji（扩展）
 - ✅ `:emoji_name:` 短代码 Emoji（如 `:smile:` → 😄）
 - ✅ Unicode Emoji 直接支持（如 `😀` 直接渲染）
+- ✅ Emoji 短代码 → Unicode 自动映射（200+ 标准 Emoji）
+- ✅ `:my-emoji:` 自定义 Emoji 别名映射（用户传入 `customEmojiMap`）
+- ✅ 自定义映射优先于标准映射
+- ✅ `:)` → 😊 ASCII 表情符号自动转换（40+ 种 ASCII 表情）
+- ✅ ASCII 表情转换可通过 `enableAsciiEmoticons` 开关控制
+- ✅ Emoji AST 节点携带 `unicode` 字段供渲染器直接使用
 
-**覆盖率**: 21/21 (100%)
+> **备注**: `STANDARD_EMOJI_MAP` 包含 200+ 标准短代码到 Unicode 的映射。`ASCII_EMOTICON_MAP` 包含 40+ 常见 ASCII 表情。`appendPossibleEmoji()` 和 `appendText()` 分别处理 `:` 前缀和非 `:` 前缀的表情匹配。参数通过 `MarkdownParser` → `StreamingParser` → `IncrementalEngine` → `InlineParser` 链路传递。
+
+**覆盖率**: 33/33 (100%)
 
 ---
 
@@ -590,19 +622,19 @@
 | 7 | 表格（GFM） | 11/11 | 0 | 100% |
 | 8 | HTML 块 | 10/10 | 0 | 100% |
 | 9 | 链接引用定义 | 12/12 | 0 | 100% |
-| 10 | 块级扩展 | 52/52 | 0 | 100% |
+| 10 | 块级扩展 | 55/55 | 0 | 100% |
 | 11 | 强调 | 13/13 | 0 | 100% |
 | 12 | 删除线（GFM） | 4/4 | 0 | 100% |
 | 13 | 行内代码 | 8/8 | 0 | 100% |
-| 14 | 链接 | 21/21 | 0 | 100% |
+| 14 | 链接 | 27/27 | 0 | 100% |
 | 15 | 图片 | 17/17 | 0 | 100% |
 | 16 | 行内 HTML | 8/8 | 0 | 100% |
 | 17 | 转义与实体 | 10/10 | 0 | 100% |
 | 18 | 换行 | 5/5 | 0 | 100% |
-| 19 | 行内扩展 | 21/21 | 0 | 100% |
+| 19 | 行内扩展 | 33/33 | 0 | 100% |
 | 20 | 流式解析引擎 | 27/27 | 0 | 100% |
 | 21 | 字符与编码 | 6/6 | 0 | 100% |
-| | **总计** | **295/295** | **0** | **100%** |
+| | **总计** | **313/313** | **0** | **100%** |
 
 ---
 
@@ -631,12 +663,9 @@
 
 ### 二、行内元素扩展
 
-| 优先级 | 特性 | 语法示例 | 说明 |
-|--------|------|----------|------|
-| **P2** | 链接高级属性 | `[链接](url){rel="nofollow" target="_blank" download="文件.pdf"}` | 解析链接后的属性块 `{...}`，支持 SEO（nofollow）、安全（noopener）、交互（新窗口/下载）相关属性 |
-| **P2** | 自定义行内样式 | `[文本]{.red .bold}` / `[文本]{style="background:yellow"}` | 解析行内属性语法 `[text]{attrs}`，生成携带自定义 class/style 的行内节点，补充 `==高亮==` 的局限性 |
-| **P2** | 数学公式编号/引用 | `$$E=mc^2 \tag{1}$$` + 正文 `公式(1)` | 解析数学公式块中的 `\tag{N}` 标记，提取公式编号供引用，针对学术/技术文档的公式交叉引用需求 |
-| **P3** | Emoji 增强 | `:my-emoji:` 自定义映射 / `:)` → 😊 表情符号自动转换 | 支持用户自定义 Emoji 别名映射及 ASCII 表情自动转换，提升社交化文档可读性 |
+> **备注**: 链接高级属性、自定义行内样式、数学公式编号/引用、Emoji 增强已实现，详见第 14 章「链接」、第 19 章「行内扩展」、第 10 章「块级扩展 — 数学公式块」。
+
+目前无待实现的行内元素扩展。
 
 ### 三、解析器能力增强
 
