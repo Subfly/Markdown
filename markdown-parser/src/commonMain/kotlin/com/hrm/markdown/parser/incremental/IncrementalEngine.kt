@@ -7,7 +7,6 @@ import com.hrm.markdown.parser.ast.*
 import com.hrm.markdown.parser.block.BlockParser
 import com.hrm.markdown.parser.block.postprocessors.PostProcessorRegistry
 import com.hrm.markdown.parser.block.starters.BlockStarterRegistry
-import com.hrm.markdown.parser.block.starters.FrontMatterStarter
 import com.hrm.markdown.parser.core.SourceText
 import com.hrm.markdown.parser.flavour.ExtendedFlavour
 import com.hrm.markdown.parser.flavour.MarkdownFlavour
@@ -45,16 +44,12 @@ class IncrementalEngine(
         }
     
     /**
-     * 构建包含动态 BlockStarter 的注册表。
-     * FrontMatterStarter 需要 SourceText 参数，无法在 Flavour 中静态创建，
-     * 因此在每次解析时根据当前 source 动态注入。
+     * 构建 BlockStarter 注册表。
+     * 所有 BlockStarter（包括 FrontMatterStarter）均由 Flavour 静态提供。
      */
     private fun buildRegistry(source: SourceText): BlockStarterRegistry {
         return BlockStarterRegistry().apply {
             flavour.blockStarters.forEach { register(it) }
-            if (flavour.options.enableFrontMatter) {
-                register(FrontMatterStarter(source))
-            }
         }
     }
     // ────── 状态 ──────
@@ -187,7 +182,7 @@ class IncrementalEngine(
             registry = buildRegistry(newSource),
             inlineParserFactory = { doc ->
                 doc.linkDefinitions.putAll(_document.linkDefinitions)
-                InlineParser(doc, flavour.options)
+                InlineParser(doc)
             }
         )
 
@@ -253,7 +248,7 @@ class IncrementalEngine(
         val parser = BlockParser(
             source = _sourceText,
             registry = buildRegistry(_sourceText),
-            inlineParserFactory = { doc -> InlineParser(doc, flavour.options) }
+            inlineParserFactory = { doc -> InlineParser(doc) }
         )
         _document = parser.parse()
 
@@ -296,7 +291,7 @@ class IncrementalEngine(
             registry = buildRegistry(newSource),
             inlineParserFactory = { doc ->
                 doc.linkDefinitions.putAll(_document.linkDefinitions)
-                InlineParser(doc, flavour.options)
+                InlineParser(doc)
             }
         )
 

@@ -46,12 +46,12 @@
 
 ## 3. 块级结构 — 代码块
 
-### ❌ 待实现
+### ✅ 已支持
 
 #### 语法高亮（扩展）
-- ❌ 根据 info string 语言标识进行语法高亮（渲染器职责）
+- ✅ 根据 info string 语言标识进行语法高亮（渲染器职责，SyntaxHighlighter 支持 20+ 语言）
 
-### ✅ 已支持
+> **备注**: `SyntaxHighlighter` 基于正则的语法高亮引擎，支持 20+ 语言（Kotlin, Java, Python, JS/TS, Swift, Go, Rust, C/C++, SQL, HTML, CSS 等）。渲染器根据 FencedCodeBlock 的 info string 自动匹配语言规则并生成带语法着色的 `AnnotatedString`。
 
 #### 围栏代码块
 - ✅ `` ``` `` 反引号围栏（≥ 3 个）
@@ -70,7 +70,9 @@
 - ✅ 代码块中间允许空行（空行后仍缩进则继续）
 - ✅ 不能打断段落（段落后紧跟缩进行仍属于段落）
 
-**覆盖率**: 13/14 (93%)
+> **备注**: `IndentedCodeBlockStarter` 增加上下文感知，在 DefinitionList/DefinitionDescription/FootnoteDefinition 内自动让步，避免定义列表和脚注中的缩进内容被误解析为缩进代码块。
+
+**覆盖率**: 14/14 (100%)
 
 ---
 
@@ -243,6 +245,8 @@
 #### Front Matter（扩展）
 - ✅ `---\n...\n---` YAML front matter
 - ✅ `+++\n...\n+++` TOML front matter
+
+> **备注**: `FrontMatterStarter` 采用无状态设计，移除 `SourceText` 依赖，仅在文档首行匹配 `---`/`+++` 时启动。未闭合的 YAML FrontMatter 优雅降级为 `ThematicBreak`，TOML FrontMatter 延伸到文档末尾。
 
 #### 自定义容器（Custom Container，扩展）
 - ✅ `:::\n内容\n:::` 基础容器语法（至少 3 个冒号）
@@ -508,6 +512,13 @@
 - ✅ 块稳定性分类（最后一个块始终视为"仍在构建中"）
 - ✅ contentHash 比对优化（FNV-1a 哈希）
 
+#### 按需内联解析（Lazy Inline）
+- ✅ `ContainerNode` 扩展懒加载机制，块级解析完成后内联元素延迟到首次访问 `children` 时才解析
+- ✅ `setLazyInlineContent()` 设置延迟解析内容和解析器引用
+- ✅ `ensureInlineParsed()` 在首次访问子节点时触发内联解析
+
+> **备注**: 懒加载机制通过 `_lazyInlineContent`、`_lazyInlineParser`、`_inlineParsed` 三个字段实现。`BlockParser.setupLazyInlineParsing()` 在 `finalizeBlock` 阶段为需要内联解析的容器节点设置延迟内容，避免一次性解析所有内联元素的性能开销。
+
 #### 块级自动关闭（LLM 容错）
 - ✅ 未关闭围栏代码块自动补结束符
 - ✅ 未关闭数学块（`$$`）自动关闭
@@ -527,7 +538,7 @@
 - ✅ 嵌套结构正确处理
 - ✅ 转义字符跳过
 
-**覆盖率**: 24/24 (100%)
+**覆盖率**: 27/27 (100%)
 
 ---
 
@@ -551,7 +562,7 @@
 |---|------|--------|------|--------|
 | 1 | 标题 | 17/17 | 0 | 100% |
 | 2 | 段落与空行 | 5/5 | 0 | 100% |
-| 3 | 代码块 | 13/14 | 1 | 93% |
+| 3 | 代码块 | 14/14 | 0 | 100% |
 | 4 | 块引用 | 8/8 | 0 | 100% |
 | 5 | 列表 | 20/20 | 0 | 100% |
 | 6 | 分隔线 | 6/6 | 0 | 100% |
@@ -568,9 +579,9 @@
 | 17 | 转义与实体 | 10/10 | 0 | 100% |
 | 18 | 换行 | 5/5 | 0 | 100% |
 | 19 | 行内扩展 | 21/21 | 0 | 100% |
-| 20 | 流式解析引擎 | 24/24 | 0 | 100% |
+| 20 | 流式解析引擎 | 27/27 | 0 | 100% |
 | 21 | 字符与编码 | 6/6 | 0 | 100% |
-| | **总计** | **280/281** | **1** | **99.6%** |
+| | **总计** | **284/284** | **0** | **100%** |
 
 ---
 
@@ -582,17 +593,6 @@
 | [GFM Spec 0.29](https://github.github.com/gfm/) | GitHub Flavored Markdown | 5（任务列表）、7（表格）、8（禁止 HTML）、12（删除线）、14（自动链接扩展） |
 | [Markdown Guide Extended Syntax](https://www.markdownguide.org/extended-syntax/) | 社区扩展语法参考 | 1（标题 ID）、10（定义列表/告示/TOC/Front Matter/自定义容器/图表块）、19（高亮/上标/下标/Emoji/缩写） |
 | 扩展语法（社区约定） | 脚注、数学公式、插入文本、键盘、自定义容器、图表嵌入 | 10, 19 |
-
----
-
-## 📋 剩余待实现项
-
-| 优先级 | 项目 | 说明 | 来源 |
-|--------|------|------|------|
-| **P1** | FrontMatter 动态注册 | `FrontMatterStarter` 需要 `SourceText` 参数，无法在 Flavour 中静态创建。需在 `BlockParser` 构造时动态注入，或创建专门的 `FrontMatterFlavour`。当前 `FrontMatterParserTest` 测试失败。 | FLAVOUR_SYSTEM_SUMMARY |
-| **P1** | IndentedCodeBlock 冲突处理 | `IndentedCodeBlockStarter` 与扩展语法（定义列表等）存在优先级冲突，已从 `ExtendedFlavour` 移除。需设计优先级策略或条件性启用机制，使缩进代码块在无冲突时仍可使用。当前 `IndentedCodeBlockTest` 测试失败。 | FLAVOUR_SYSTEM_SUMMARY |
-| **P1** | 按需内联解析（Lazy Inline） | 块级解析完成后，内联元素延迟到首次访问时才解析（`Lazy<List<InlineNode>>`）。优化 IDE 语法高亮场景（只解析可见块）和长文档预览（分页 + 按需解析内联）。参考 JetBrains Markdown 的分级解析设计。 | JETBRAINS_MARKDOWN_COMPARISON, FLAVOUR_SYSTEM_SUMMARY |
-| **P4** | 语法高亮 | 渲染器职责，根据 info string 进行代码着色（非解析器范畴） | — |
 
 ---
 

@@ -75,10 +75,4 @@ object CommonMarkFlavour : MarkdownFlavour {
      */
     override val postProcessors: List<PostProcessor> = emptyList()
 
-    /**
-     * CommonMark 选项配置。
-     *
-     * 所有扩展特性均关闭，仅保留 HTML 支持（CommonMark 允许）。
-     */
-    override val options: FlavourOptions = FlavourOptions.Default
 }

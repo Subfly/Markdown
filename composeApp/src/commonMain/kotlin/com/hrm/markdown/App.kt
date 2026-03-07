@@ -1833,7 +1833,7 @@ private val normalDemoMarkdown = """
 - [ ] 待完成的任务
 - [x] 另一个已完成的任务
 
-## 代码块
+## 代码块（语法高亮）
 
 ```kotlin
 fun main() {
@@ -1844,6 +1844,30 @@ fun main() {
     numbers.filter { it % 2 == 0 }
            .map { it * it }
            .forEach { println(it) }
+}
+```
+
+```python
+# Python 语法高亮示例
+def fibonacci(n: int) -> list:
+    result = [0, 1]
+    for i in range(2, n):
+        result.append(result[-1] + result[-2])
+    return result
+
+@dataclass
+class Config:
+    name: str = "default"
+    count: int = 100
+    enabled: bool = True
+```
+
+```json
+{
+  "name": "markdown-renderer",
+  "version": "1.0.0",
+  "features": ["syntax-highlight", "lazy-inline"],
+  "enabled": true
 }
 ```
 

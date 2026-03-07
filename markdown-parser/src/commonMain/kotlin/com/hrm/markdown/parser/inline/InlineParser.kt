@@ -13,12 +13,11 @@ import com.hrm.markdown.parser.block.BlockParser
  */
 class InlineParser(
     private val document: Document,
-    private val options: com.hrm.markdown.parser.flavour.FlavourOptions = com.hrm.markdown.parser.flavour.FlavourOptions.Extended
 ) : BlockParser.InlineParserInterface {
 
     override fun parseInlines(content: String, parent: ContainerNode) {
         if (content.isEmpty()) return
-        val parser = InlineParserInstance(content, document, options)
+        val parser = InlineParserInstance(content, document)
         val nodes = parser.parse()
         for (node in nodes) {
             parent.appendChild(node)
@@ -51,7 +50,6 @@ class InlineParser(
 private class InlineParserInstance(
     private val input: String,
     private val document: Document,
-    private val options: com.hrm.markdown.parser.flavour.FlavourOptions
 ) {
     // 链表包装 AST 节点
     private class LLNode(var astNode: Node) {

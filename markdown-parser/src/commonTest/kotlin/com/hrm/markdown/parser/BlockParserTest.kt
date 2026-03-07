@@ -4,6 +4,7 @@ import com.hrm.markdown.parser.ast.*
 import com.hrm.markdown.parser.flavour.CommonMarkFlavour
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlin.test.assertNotNull
@@ -1054,8 +1055,8 @@ class ListExtendedTest {
 
 class IndentedCodeBlockTest {
 
-    // IndentedCodeBlock 属于 CommonMark 标准语法，ExtendedFlavour 中因与定义列表等扩展冲突而移除
-    private val parser = MarkdownParser(CommonMarkFlavour)
+    // IndentedCodeBlock 现在在 ExtendedFlavour 中也支持（在定义列表/脚注内部自动让步）
+    private val parser = MarkdownParser()
 
     @Test
     fun should_parse_indented_code_block() {
@@ -1079,6 +1080,16 @@ class IndentedCodeBlockTest {
         assertIs<IndentedCodeBlock>(block)
         assertTrue(block.literal.contains("**not bold**"))
         assertTrue(block.literal.contains("# not heading"))
+    }
+
+    @Test
+    fun should_not_conflict_with_definition_list() {
+        // 定义列表中 4 空格缩进是续行内容，不应触发缩进代码块
+        val doc = parser.parse("Term\n: Description\n\n    Continued description")
+        val hasDef = doc.children.any { it is DefinitionList }
+        assertTrue(hasDef, "Should contain a definition list")
+        val hasIndented = doc.children.any { it is IndentedCodeBlock }
+        assertFalse(hasIndented, "Should not have indented code block inside definition context")
     }
 }
 

@@ -508,18 +508,6 @@ internal class BlockStarters(
             else -> return null
         }
 
-        // 前置元数据需要在文档中某处有关闭标记。
-        // 向前查找关闭标记。
-        val closingMarker = if (format == "yaml") "---" else "+++"
-        var foundClosing = false
-        for (i in lineIdx + 1 until source.lineCount) {
-            if (source.lineContent(i).trim() == closingMarker) {
-                foundClosing = true
-                break
-            }
-        }
-        if (!foundClosing) return null
-
         val block = FrontMatter(format = format)
         block.lineRange = LineRange(lineIdx, lineIdx + 1)
         val ob = OpenBlock(block, contentStartLine = lineIdx, lastLineIndex = lineIdx)

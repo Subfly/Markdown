@@ -869,3 +869,56 @@ class ImageAdvancedFeatureTest {
         assertEquals("lazy", img.attributes["loading"])
     }
 }
+
+// ────── 按需内联解析（Lazy Inline Parsing）测试 ──────
+
+class LazyInlineParsingTest {
+
+    private val parser = MarkdownParser()
+
+    @Test
+    fun should_lazy_parse_paragraph_inline_content() {
+        val doc = parser.parse("Hello **bold** world")
+        val para = doc.children.first()
+        assertIs<Paragraph>(para)
+        // 首次访问 children 触发行内解析
+        assertTrue(para.children.isNotEmpty())
+        val strong = para.children[1]
+        assertIs<StrongEmphasis>(strong)
+    }
+
+    @Test
+    fun should_lazy_parse_heading_inline_content() {
+        val doc = parser.parse("# Hello *italic*")
+        val heading = doc.children.first()
+        assertIs<Heading>(heading)
+        assertTrue(heading.children.isNotEmpty())
+        val em = heading.children[1]
+        assertIs<Emphasis>(em)
+    }
+
+    @Test
+    fun should_parse_table_cells_lazily() {
+        val doc = parser.parse("| **A** | *B* |\n| --- | --- |\n| 1 | 2 |")
+        val table = doc.children.first()
+        assertIs<Table>(table)
+        val head = table.children.first()
+        assertIs<TableHead>(head)
+        val headerRow = head.children.first()
+        assertIs<TableRow>(headerRow)
+        val cell = headerRow.children.first()
+        assertIs<TableCell>(cell)
+        // 表头单元格包含行内内容
+        assertTrue(cell.children.isNotEmpty())
+    }
+
+    @Test
+    fun should_mark_inline_as_parsed_after_access() {
+        val doc = parser.parse("Hello **bold**")
+        val para = doc.children.first()
+        assertIs<Paragraph>(para)
+        // 首次访问触发解析
+        para.children
+        assertTrue(para.isInlineParsed)
+    }
+}

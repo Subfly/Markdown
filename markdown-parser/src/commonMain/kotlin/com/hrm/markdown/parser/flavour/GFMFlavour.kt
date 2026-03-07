@@ -75,10 +75,4 @@ object GFMFlavour : MarkdownFlavour {
      */
     override val postProcessors: List<PostProcessor> = emptyList()
 
-    /**
-     * GFM 选项配置。
-     *
-     * 启用所有 GFM 扩展特性。
-     */
-    override val options: FlavourOptions = FlavourOptions.GFM
 }

@@ -43,10 +43,79 @@ sealed class Node {
 
 /**
  * 容器节点，可以包含子节点。
+ *
+ * 支持按需内联解析（Lazy Inline Parsing）：
+ * 块级解析完成后，行内内容可以延迟到首次访问 [children] 时才解析。
+ * 这优化了 IDE 语法高亮场景（只解析可见块）和长文档预览（分页 + 按需解析）。
+ *
+ * 通过 [setLazyInlineContent] 设置延迟解析内容，首次访问 [children] 时自动触发。
  */
 sealed class ContainerNode : Node() {
     private val _children: MutableList<Node> = mutableListOf()
-    val children: List<Node> get() = _children
+
+    /**
+     * 延迟行内解析的原始内容。设置后，首次访问 [children] 时自动触发行内解析。
+     */
+    private var _lazyInlineContent: String? = null
+
+    /**
+     * 行内解析器引用。与 [_lazyInlineContent] 配合使用。
+     */
+    private var _lazyInlineParser: ((String, ContainerNode) -> Unit)? = null
+
+    /**
+     * 是否已完成延迟行内解析。
+     */
+    private var _inlineParsed: Boolean = false
+
+    /**
+     * 子节点列表。
+     *
+     * 若设置了延迟行内解析内容（通过 [setLazyInlineContent]），
+     * 首次访问时会自动触发行内解析。
+     */
+    val children: List<Node>
+        get() {
+            ensureInlineParsed()
+            return _children
+        }
+
+    /**
+     * 设置延迟行内解析内容。
+     *
+     * 调用后，行内内容不会立即解析，而是在首次访问 [children] 时触发。
+     * 适用于 Paragraph、Heading、SetextHeading、TableCell、DefinitionTerm 等
+     * 需要行内解析的块级节点。
+     *
+     * @param content 待解析的行内原始文本
+     * @param parser 行内解析函数，接收 (content, parent) 并将解析结果追加到 parent
+     */
+    fun setLazyInlineContent(content: String, parser: (String, ContainerNode) -> Unit) {
+        _lazyInlineContent = content
+        _lazyInlineParser = parser
+        _inlineParsed = false
+    }
+
+    /**
+     * 行内内容是否已解析。
+     */
+    val isInlineParsed: Boolean get() = _inlineParsed
+
+    /**
+     * 确保行内内容已被解析。若有延迟内容则立即执行解析。
+     */
+    private fun ensureInlineParsed() {
+        if (!_inlineParsed && _lazyInlineContent != null) {
+            _inlineParsed = true
+            val content = _lazyInlineContent!!
+            val parser = _lazyInlineParser!!
+            _lazyInlineContent = null
+            _lazyInlineParser = null
+            if (content.isNotEmpty()) {
+                parser(content, this)
+            }
+        }
+    }
 
     fun appendChild(child: Node) {
         child.parent = this
@@ -95,9 +164,16 @@ sealed class ContainerNode : Node() {
     fun clearChildren() {
         _children.forEach { it.parent = null }
         _children.clear()
+        // 同时清除 lazy 状态，避免 clear 后重新触发旧的 lazy 解析
+        _lazyInlineContent = null
+        _lazyInlineParser = null
+        _inlineParsed = false
     }
 
-    fun childCount(): Int = _children.size
+    fun childCount(): Int {
+        ensureInlineParsed()
+        return _children.size
+    }
 }
 
 /**

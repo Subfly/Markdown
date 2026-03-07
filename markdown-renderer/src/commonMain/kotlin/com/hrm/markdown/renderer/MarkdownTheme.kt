@@ -15,6 +15,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.hrm.markdown.renderer.highlight.SyntaxColorScheme
 
 /**
  * Markdown 渲染的完整主题配置。
@@ -105,6 +106,8 @@ data class MarkdownTheme(
     val abbreviationStyle: SpanStyle = SpanStyle(
         textDecoration = TextDecoration.Underline,
     ),
+    /** 代码块语法高亮配色方案 */
+    val syntaxColorScheme: SyntaxColorScheme = SyntaxColorScheme.GitHubLight,
 )
 
 @Immutable

@@ -81,6 +81,7 @@ object ExtendedFlavour : MarkdownFlavour {
      *
      * 包含 CommonMark + GFM + 所有扩展解析器。
      * 按优先级排序：
+     * 0. 前置元数据（10）
      * 1. Setext 标题（100）
      * 2. ATX 标题（110）
      * 3. 表格（200）
@@ -93,11 +94,10 @@ object ExtendedFlavour : MarkdownFlavour {
      * 10. 列表项（500）
      * 11. 脚注定义（510）
      * 12. 定义描述（520）
-     *
-     * 注意：FrontMatterStarter 需要 SourceText 参数，无法在这里静态创建，
-     * 需要在 BlockParser 构造时动态注册。
+     * 13. 缩进代码块（600，在定义列表/脚注内部自动让步）
      */
     override val blockStarters: List<BlockStarter> = listOf(
+        FrontMatterStarter(),          // 10
         SetextHeadingStarter(),        // 100
         HeadingStarter(),              // 110
         TableStarter(),                // 200
@@ -110,7 +110,7 @@ object ExtendedFlavour : MarkdownFlavour {
         ListItemStarter(),             // 500
         FootnoteDefinitionStarter(),   // 510
         DefinitionDescriptionStarter(), // 520
-        // 注意：移除了 IndentedCodeBlockStarter（避免与扩展语法冲突）
+        IndentedCodeBlockStarter(),    // 600（在定义列表/脚注内部自动让步）
     )
 
     /**
@@ -129,10 +129,4 @@ object ExtendedFlavour : MarkdownFlavour {
         HtmlFilterProcessor(),         // 400
     )
 
-    /**
-     * 扩展版选项配置。
-     *
-     * 启用所有扩展特性。
-     */
-    override val options: FlavourOptions = FlavourOptions.Extended
 }

@@ -747,6 +747,28 @@ class BlockParser(
                 node.lineRange = LineRange(ob.contentStartLine, ob.lastLineIndex + 1)
             }
             is FrontMatter -> {
+                // 检查是否已被正确关闭（addLineToTip 会在遇到闭合标记时 finalizeBlock）
+                val closingMarker = if (node.format == "yaml") "---" else "+++"
+                val lastContentLine = if (ob.lastLineIndex < source.lineCount) {
+                    source.lineContent(ob.lastLineIndex).trim()
+                } else ""
+                val wasClosed = lastContentLine == closingMarker && ob.lastLineIndex > ob.contentStartLine
+
+                if (!wasClosed) {
+                    // 未关闭的 FrontMatter：降级为 ThematicBreak（如果格式为 yaml 即 ---）
+                    val parent = node.parent as? ContainerNode ?: return
+                    if (node.format == "yaml") {
+                        val tb = ThematicBreak(char = '-')
+                        tb.lineRange = LineRange(ob.contentStartLine, ob.contentStartLine + 1)
+                        parent.replaceChild(node, tb)
+                    } else {
+                        // TOML 格式 +++ 不是合法的 ThematicBreak，直接移除
+                        parent.removeChild(node)
+                    }
+                    // 剩余内容行会在后续作为独立块被重新处理（因为 FrontMatter 被移除后解析器会继续）
+                    return
+                }
+
                 if (node.literal.isEmpty()) {
                     // 跳过开头标记行
                     node.literal = ob.contentLines.drop(1).joinToString("\n")
@@ -943,39 +965,59 @@ class BlockParser(
 
     private fun parseInlineContent(doc: Document) {
         val inlineParser = inlineParserFactory?.invoke(doc) ?: return
-        parseInlineContentRecursive(doc, inlineParser)
+        setupLazyInlineParsing(doc, inlineParser)
     }
 
-    private fun parseInlineContentRecursive(node: Node, inlineParser: InlineParserInterface) {
+    /**
+     * 为需要行内解析的块级节点设置延迟解析（Lazy Inline Parsing）。
+     *
+     * 不立即执行行内解析，而是将原始内容和解析器引用存储在节点上，
+     * 当首次访问 `children` 时才触发解析。这优化了：
+     * - IDE 语法高亮场景：只解析可见块
+     * - 长文档预览：分页 + 按需解析行内内容
+     */
+    private fun setupLazyInlineParsing(node: Node, inlineParser: InlineParserInterface) {
         when (node) {
             is Paragraph -> {
                 val content = reconstructContent(node)
                 node.clearChildren()
-                inlineParser.parseInlines(content, node)
+                node.setLazyInlineContent(content) { c, parent ->
+                    inlineParser.parseInlines(c, parent)
+                }
             }
             is Heading -> {
                 val content = reconstructContent(node)
                 node.clearChildren()
-                inlineParser.parseInlines(content, node)
+                node.setLazyInlineContent(content) { c, parent ->
+                    inlineParser.parseInlines(c, parent)
+                }
             }
             is SetextHeading -> {
                 val content = reconstructContent(node)
                 node.clearChildren()
-                inlineParser.parseInlines(content, node)
+                node.setLazyInlineContent(content) { c, parent ->
+                    inlineParser.parseInlines(c, parent)
+                }
             }
             is TableCell -> {
                 val content = reconstructContent(node)
                 node.clearChildren()
-                inlineParser.parseInlines(content, node)
+                node.setLazyInlineContent(content) { c, parent ->
+                    inlineParser.parseInlines(c, parent)
+                }
             }
             is DefinitionTerm -> {
                 val content = reconstructContent(node)
                 node.clearChildren()
-                inlineParser.parseInlines(content, node)
+                node.setLazyInlineContent(content) { c, parent ->
+                    inlineParser.parseInlines(c, parent)
+                }
             }
             is ContainerNode -> {
+                // 对容器节点，递归设置其直接子节点的 lazy 解析
+                // 注意：这里直接访问内部子节点列表，不触发子节点的 lazy 解析
                 for (child in node.children.toList()) {
-                    parseInlineContentRecursive(child, inlineParser)
+                    setupLazyInlineParsing(child, inlineParser)
                 }
             }
             else -> {}

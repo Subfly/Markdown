@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import com.hrm.markdown.parser.ast.FencedCodeBlock
 import com.hrm.markdown.parser.ast.IndentedCodeBlock
 import com.hrm.markdown.renderer.LocalMarkdownTheme
+import com.hrm.markdown.renderer.highlight.SyntaxColorScheme
+import com.hrm.markdown.renderer.highlight.SyntaxHighlighter
 
 /**
  * 围栏代码块渲染器 (``` 或 ~~~)
@@ -33,13 +35,14 @@ import com.hrm.markdown.renderer.LocalMarkdownTheme
  *
  * 使用 [BasicText] + [AnnotatedString] 渲染代码文本，
  * 与项目中其他渲染器（ParagraphRenderer、HeadingRenderer）保持一致的风格。
+ * 根据 [FencedCodeBlock.language] 进行语法高亮着色。
  *
  * ### 架构
  *
  * ```
  * ┌─ Box (fillMaxWidth, 圆角背景, clipToBounds) ───────────┐
  * │  ┌─ BasicText (softWrap=false, horizontalScroll) ─────┐ │
- * │  │  AnnotatedString 渲染代码文本                       │ │
+ * │  │  AnnotatedString 渲染代码文本（语法高亮着色）       │ │
  * │  │  不自动换行，超出内容通过水平滚动查看               │ │
  * │  │  heightIn(min = stableMinHeight) 保证高度只增不减   │ │
  * │  └────────────────────────────────────────────────────┘ │
@@ -48,6 +51,7 @@ import com.hrm.markdown.renderer.LocalMarkdownTheme
  *
  * ### 特性
  *
+ * - **语法高亮**：根据代码块的 language（info string）自动对代码着色。
  * - **外层宽度固定**：Box 始终 fillMaxWidth，不受代码行宽度变化影响。
  * - **水平滚动**：长代码行通过 horizontalScroll 左右滚动查看。
  * - **高度只增不减**：流式追加内容时高度只会增加不会缩小，避免高度抖动。
@@ -60,6 +64,7 @@ internal fun FencedCodeBlockRenderer(
 ) {
     CodeBlockText(
         text = node.literal.ifEmpty { " " },
+        language = node.language,
         modifier = modifier,
     )
 }
@@ -74,6 +79,7 @@ internal fun IndentedCodeBlockRenderer(
 ) {
     CodeBlockText(
         text = node.literal.ifEmpty { " " },
+        language = "",
         modifier = modifier,
     )
 }
@@ -82,18 +88,25 @@ internal fun IndentedCodeBlockRenderer(
  * 代码块的 Text + AnnotatedString 渲染实现。
  *
  * @param text 代码文本内容（来自 AST 节点的 literal）
+ * @param language 语言标识，用于语法高亮
  */
 @Composable
 private fun CodeBlockText(
     text: String,
+    language: String,
     modifier: Modifier = Modifier,
 ) {
     val theme = LocalMarkdownTheme.current
     val density = LocalDensity.current
+    val colorScheme = theme.syntaxColorScheme
 
-    // 构建 AnnotatedString（纯文本，使用代码块样式）
-    val annotatedString = remember(text) {
-        AnnotatedString(text)
+    // 构建 AnnotatedString（带语法高亮）
+    val annotatedString = remember(text, language, colorScheme) {
+        if (language.isNotEmpty()) {
+            SyntaxHighlighter.highlight(text, language, colorScheme)
+        } else {
+            AnnotatedString(text)
+        }
     }
 
     // 高度只增不减：记录历史最小高度（dp），避免流式场景下因末尾换行导致的高度波动
