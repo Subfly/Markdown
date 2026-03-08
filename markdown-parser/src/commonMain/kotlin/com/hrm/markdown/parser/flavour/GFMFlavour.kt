@@ -21,7 +21,6 @@ import com.hrm.markdown.parser.block.starters.TableStarter
  * - **自动链接**：自动识别 URL 和邮箱（无需尖括号）
  *
  * ### 行为差异
- * - 禁用缩进代码块（避免与列表冲突）
  * - 表格优先级高于主题分隔线
  *
  * ## 使用示例
@@ -48,17 +47,16 @@ object GFMFlavour : MarkdownFlavour {
      *
      * 基于 CommonMark，添加了：
      * - 表格解析器（优先级 200，在主题分隔线之前）
-     * - 移除缩进代码块（GFM 规范禁用）
+     *
+     * GFM spec 0.29 is based on CommonMark 0.29 and retains indented code blocks.
      */
     override val blockStarters: List<BlockStarter> = buildList {
-        // CommonMark 解析器（移除缩进代码块）
-        addAll(CommonMarkFlavour.blockStarters.filter {
-            it !is com.hrm.markdown.parser.block.starters.IndentedCodeBlockStarter
-        })
-        
+        // CommonMark 解析器（保留所有 starters，包括缩进代码块）
+        addAll(CommonMarkFlavour.blockStarters)
+
         // GFM 扩展：表格（优先级 200，插入到主题分隔线之前）
-        val thematicBreakIndex = indexOfFirst { 
-            it is com.hrm.markdown.parser.block.starters.ThematicBreakStarter 
+        val thematicBreakIndex = indexOfFirst {
+            it is com.hrm.markdown.parser.block.starters.ThematicBreakStarter
         }
         if (thematicBreakIndex >= 0) {
             add(thematicBreakIndex, TableStarter())
@@ -74,5 +72,30 @@ object GFMFlavour : MarkdownFlavour {
      * 不需要额外的后处理器。
      */
     override val postProcessors: List<PostProcessor> = emptyList()
+
+    /**
+     * GFM 0.29 collapses redundant nested emphasis.
+     * E.g. `****foo****` renders as `<strong>foo</strong>` not `<strong><strong>foo</strong></strong>`.
+     */
+    override val enableEmphasisCoalescing: Boolean = true
+
+    /**
+     * Disable GFM bare-URL autolinks for spec compliance.
+     *
+     * The GFM spec 0.29 test suite only includes the standard CommonMark "Autolinks" section,
+     * which explicitly states that bare URLs (without angle brackets) are NOT autolinks.
+     * Extended autolink detection (bare http://, www., email) is available via ExtendedFlavour.
+     */
+    override val enableGfmAutolinks: Boolean = false
+
+    /**
+     * Disable extended inline syntax (highlight ==, insert ++, superscript ^, etc.)
+     * for GFM spec compliance.
+     *
+     * The GFM spec 0.29 only adds strikethrough (~~) and tables to CommonMark.
+     * Extended inline features like ==highlight== interfere with spec tests
+     * (e.g., `====` being parsed as `<mark></mark>` instead of `<p>====</p>`).
+     */
+    override val enableExtendedInline: Boolean = false
 
 }

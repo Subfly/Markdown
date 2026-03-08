@@ -110,6 +110,7 @@ class FlavourCache(
             CommonMarkFlavour,
             GFMFlavour,
             ExtendedFlavour,
+            MarkdownExtraFlavour,
         )
 
         /**

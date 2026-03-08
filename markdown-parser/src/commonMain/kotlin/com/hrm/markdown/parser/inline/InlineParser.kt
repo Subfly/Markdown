@@ -19,14 +19,57 @@ class InlineParser(
     private val enableAsciiEmoticons: Boolean = false,
     private val enableGfmAutolinks: Boolean = true,
     private val enableExtendedInline: Boolean = true,
+    private val enableEmphasisCoalescing: Boolean = false,
+    private val enableStrikethrough: Boolean = true,
 ) : BlockParser.InlineParserInterface {
 
     override fun parseInlines(content: String, parent: ContainerNode) {
         if (content.isEmpty()) return
-        val parser = InlineParserInstance(content, document, customEmojiMap, enableAsciiEmoticons, enableGfmAutolinks, enableExtendedInline)
+        val parser = InlineParserInstance(content, document, customEmojiMap, enableAsciiEmoticons, enableGfmAutolinks, enableExtendedInline, enableStrikethrough)
         val nodes = parser.parse()
         for (node in nodes) {
             parent.appendChild(node)
+        }
+        if (enableEmphasisCoalescing) {
+            coalesceEmphasis(parent)
+        }
+    }
+
+    /**
+     * Recursively flattens redundant nested StrongEmphasis.
+     *
+     * GFM 0.29 collapses nested strong emphasis:
+     * `<strong><strong>foo</strong></strong>` becomes `<strong>foo</strong>`.
+     *
+     * This only applies to StrongEmphasis inside StrongEmphasis, NOT to
+     * Emphasis inside Emphasis (which the GFM spec keeps nested).
+     */
+    private fun coalesceEmphasis(node: Node) {
+        if (node !is ContainerNode) return
+
+        // First, recurse into children
+        for (child in node.children.toList()) {
+            coalesceEmphasis(child)
+        }
+
+        // Flatten: if any child StrongEmphasis is inside a parent StrongEmphasis,
+        // unwrap the inner one by promoting its children.
+        if (node is StrongEmphasis) {
+            var i = 0
+            while (i < node.children.size) {
+                val child = node.children[i]
+                if (child is StrongEmphasis) {
+                    // Unwrap: replace `child` with its own children
+                    val innerChildren = child.children.toList()
+                    node.removeChildAt(i)
+                    for ((j, ic) in innerChildren.withIndex()) {
+                        node.insertChild(i + j, ic)
+                    }
+                    i += innerChildren.size
+                } else {
+                    i++
+                }
+            }
         }
     }
 
@@ -160,6 +203,7 @@ private class InlineParserInstance(
     private val enableAsciiEmoticons: Boolean = false,
     private val enableGfmAutolinks: Boolean = true,
     private val enableExtendedInline: Boolean = true,
+    private val enableStrikethrough: Boolean = true,
 ) {
     // 链表包装 AST 节点
     private class LLNode(var astNode: Node) {
@@ -218,12 +262,13 @@ private class InlineParserInstance(
                 }
                 c == ']' -> appendCloseBracket()
                 c == '*' || c == '_' -> appendDelimiterRun(c)
-                c == '~' && enableExtendedInline -> appendTildeRun()
+                c == '~' && (enableExtendedInline || enableStrikethrough) -> appendTildeRun()
                 c == '=' && scanner.peek(1) == '=' && enableExtendedInline -> appendPairedDelim('=', 2)
                 c == '+' && scanner.peek(1) == '+' && enableExtendedInline -> appendPairedDelim('+', 2)
                 c == '^' && enableExtendedInline -> appendPairedDelim('^', 1)
                 c == '$' && enableExtendedInline -> appendDollar()
                 c == ':' && enableExtendedInline -> appendPossibleEmoji()
+                c == '{' && scanner.peek(1) == '%' && enableExtendedInline -> appendShortcode()
                 c == '\n' -> appendLineBreak()
                 else -> appendText()
             }
@@ -653,6 +698,7 @@ private class InlineParserInstance(
         }
 
         if (count == 2) {
+            // ~~ strikethrough: enabled by either enableExtendedInline or enableStrikethrough
             val charBefore = if (pos > 0) input[pos - 1] else '\n'
             val charAfter = if (scanner.pos < input.length) input[scanner.pos] else '\n'
             val canOpen = !CharacterUtils.isUnicodeWhitespace(charAfter)
@@ -664,7 +710,8 @@ private class InlineParserInstance(
                 ll.delimEntry = entry
                 pushDelim(entry)
             }
-        } else if (count == 1) {
+        } else if (count == 1 && enableExtendedInline) {
+            // Single ~ subscript: only with enableExtendedInline (not in GFM-only mode)
             val charBefore = if (pos > 0) input[pos - 1] else '\n'
             val charAfter = if (scanner.pos < input.length) input[scanner.pos] else '\n'
             val canOpen = !CharacterUtils.isUnicodeWhitespace(charAfter)
@@ -744,6 +791,28 @@ private class InlineParserInstance(
         }
         scanner.pos = pos + 1
         appendLL(Text("$"))
+    }
+
+    private fun appendShortcode() {
+        val pos = scanner.pos
+        // find the closing %}
+        val closeIdx = input.indexOf("%}", pos + 2)
+        if (closeIdx < 0) {
+            // not a valid shortcode, emit as text
+            scanner.advance() // {
+            appendLL(Text("{"))
+            return
+        }
+        val inner = input.substring(pos + 2, closeIdx).trim()
+        if (inner.isEmpty() || inner.startsWith("end")) {
+            scanner.advance()
+            appendLL(Text("{"))
+            return
+        }
+        // advance past the closing %}
+        scanner.pos = closeIdx + 2
+        val (tagName, args) = com.hrm.markdown.parser.block.starters.ShortcodeBlockStarter.parseShortcodeArgs(inner)
+        appendLL(ShortcodeInline(tagName = tagName, args = args))
     }
 
     private fun appendPossibleEmoji() {
@@ -839,12 +908,14 @@ private class InlineParserInstance(
                 c == '*' || c == '_' || c == '\n') {
                 break
             }
-            if (enableExtendedInline && (c == '~' || c == '$' || c == ':' || c == '^')) {
+            if (c == '~' && (enableExtendedInline || enableStrikethrough)) break
+            if (enableExtendedInline && (c == '$' || c == ':' || c == '^')) {
                 break
             }
             if (c == '!' && scanner.peek(1) == '[') break
             if (enableExtendedInline && c == '=' && scanner.peek(1) == '=') break
             if (enableExtendedInline && c == '+' && scanner.peek(1) == '+') break
+            if (enableExtendedInline && c == '{' && scanner.peek(1) == '%') break
 
             // ASCII 表情检测（非 : 开头的，如 ;) B) XD 等）
             if (enableAsciiEmoticons && (c == ';' || c == 'B' || c == 'X' || c == 'x' || c == '8' || c == 'O' || c == 'o')) {

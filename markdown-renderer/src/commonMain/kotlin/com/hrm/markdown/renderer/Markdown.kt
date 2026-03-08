@@ -80,6 +80,7 @@ fun Markdown(
     isStreaming: Boolean = false,
     retainStateOnChange: Boolean = false,
     enablePagination: Boolean = false,
+    enableScroll: Boolean = true,
     initialBlockCount: Int = 100,
     imageContent: MarkdownImageRenderer? = null,
     onLinkClick: ((String) -> Unit)? = null,
@@ -99,6 +100,7 @@ fun Markdown(
             scrollState = scrollState,
             isStreaming = isStreaming,
             enablePagination = enablePagination,
+            enableScroll = enableScroll,
             initialBlockCount = initialBlockCount,
             imageContent = imageContent,
             onLinkClick = onLinkClick,
@@ -172,6 +174,7 @@ private fun InnerMarkdown(
     scrollState: ScrollState = rememberScrollState(),
     isStreaming: Boolean = false,
     enablePagination: Boolean = false,
+    enableScroll: Boolean = true,
     initialBlockCount: Int = 100,
     imageContent: MarkdownImageRenderer? = null,
     onLinkClick: ((String) -> Unit)? = null,
@@ -263,9 +266,7 @@ private fun InnerMarkdown(
             val content: @Composable () -> Unit = {
                 Column(
                     modifier = modifier
-                        .verticalScroll(scrollState)
-                        // graphicsLayer 创建独立绘制层，将 Column 的绘制与外层隔离。
-                        // 这样滚动位置变化只在此层处理，不会触发外层的绘制失效。
+                        .then(if (enableScroll) Modifier.verticalScroll(scrollState) else Modifier)
                         .graphicsLayer { },
                     verticalArrangement = Arrangement.spacedBy(theme.blockSpacing),
                 ) {

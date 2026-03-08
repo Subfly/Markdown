@@ -64,6 +64,13 @@
 - ✅ 未闭合围栏延伸到文档末尾
 - ✅ 围栏代码块内容不解析 Markdown 语法
 
+#### 代码块属性增强（扩展）
+- ✅ `hl_lines` 属性：`` ```python {hl_lines="1 3-5"} `` 解析 info string 中 `{...}` 内的行高亮参数
+- ✅ `linenums` 属性：`` ```python {linenums=true} `` 解析是否显示行号
+- ✅ `startline` 属性：`` ```python {startline=10} `` 解析起始行号
+
+> **备注**: 围栏代码块的 info string 中 `{...}` 属性块由 `FencedCodeBlockStarter` 解析。`FencedCodeBlock` AST 节点携带 `highlightLines: List<IntRange>`、`showLineNumbers: Boolean`、`startLineNumber: Int` 三个额外字段。`HtmlRenderer` 在 `<pre>` 标签上输出 `data-hl-lines`、`data-linenums`、`data-startline` 属性。
+
 #### 缩进代码块
 - ✅ 4 个空格或 1 个 Tab 缩进
 - ✅ 连续缩进行合并为一个代码块
@@ -72,7 +79,7 @@
 
 > **备注**: `IndentedCodeBlockStarter` 增加上下文感知，在 DefinitionList/DefinitionDescription/FootnoteDefinition 内自动让步，避免定义列表和脚注中的缩进内容被误解析为缩进代码块。
 
-**覆盖率**: 14/14 (100%)
+**覆盖率**: 17/17 (100%)
 
 ---
 
@@ -658,7 +665,7 @@
 
 #### 诊断模型
 - ✅ `DiagnosticSeverity` 三级严重度（ERROR / WARNING / INFO）
-- ✅ `DiagnosticCode` 枚举（8 种诊断码）
+- ✅ `DiagnosticCode` 枚举（13 种诊断码）
 - ✅ `Diagnostic` 数据类（携带行号、严重度、诊断码、消息）
 - ✅ `DiagnosticResult` 集合类（支持按严重度过滤、排序、toString 输出）
 - ✅ 解析结果通过 `Document.diagnostics` 附带诊断信息
@@ -671,6 +678,15 @@
 - ✅ 空链接目标检测（`[text]()`）
 - ✅ 图片缺失 alt 文本检测
 
+#### WCAG 无障碍检测（扩展）
+- ✅ `EMPTY_LINK_TEXT` 检测：链接文本为空时生成诊断（确保所有链接可被屏幕阅读器描述）
+- ✅ `LINK_TEXT_NOT_DESCRIPTIVE` 检测：链接文本为 "click here"、"here"、"read more" 等非描述性文本时警告
+- ✅ `MISSING_LANG_IN_CODE_BLOCK` 检测：围栏代码块缺少 info string 语言标识时提示（辅助技术依赖语言标注）
+- ✅ `TABLE_MISSING_HEADER` 检测：表格缺少表头行时警告（屏幕阅读器依赖 `<th>` 建立数据关联）
+- ✅ `LONG_ALT_TEXT` 检测：图片 alt 文本超过 125 字符时建议精简（WCAG 最佳实践）
+
+> **备注**: WCAG 无障碍检测作为 `LintingPostProcessor` 的扩展规则集成，5 个新增诊断码均为 WARNING 级别。检测逻辑遵循 [WCAG 2.1 AA](https://www.w3.org/TR/WCAG21/) 标准，覆盖链接可访问性（1.1.1/2.4.4）、代码语义（1.3.1）、表格结构（1.3.1）和图片描述（1.1.1）。
+
 #### 集成方式
 - ✅ `MarkdownParser(enableLinting = true)` 开关控制
 - ✅ `LintingPostProcessor`（优先级 900）作为后处理器运行
@@ -678,7 +694,35 @@
 
 > **备注**: `LintingPostProcessor` 实现 `PostProcessor` 接口，在所有其他后处理器完成后运行。通过递归遍历 AST 检测各类问题，诊断结果同时附加到 `Document.diagnostics` 和 `MarkdownParser.diagnostics`。
 
-**覆盖率**: 14/14 (100%)
+**覆盖率**: 19/19 (100%)
+
+---
+
+## 24. 短代码（Shortcodes，扩展）
+
+### ✅ 已支持
+
+#### 块级短代码
+- ✅ `{% tag args %}...{% endtag %}` 块级短代码（独占行，内容可跨多行）
+- ✅ `{% endtag %}` 闭合标记（标签名须与开启标记匹配）
+- ✅ 块级短代码内支持嵌套 Markdown 块级元素解析
+
+#### 行内短代码
+- ✅ `{% tag args %}` 行内短代码（不独占行时作为行内元素解析）
+
+#### 参数解析
+- ✅ 位置参数（positional）：`{% youtube dQw4w9WgXcQ %}`
+- ✅ 带引号参数（quoted）：`{% include "header.html" %}`
+- ✅ 键值对参数（key=value）：`{% img src="/photo.jpg" width=300 %}`
+
+#### AST 节点与渲染
+- ✅ `ShortcodeBlock` AST 节点（块级短代码，携带 tag、arguments、body）
+- ✅ `ShortcodeInline` AST 节点（行内短代码，携带 tag、arguments）
+- ✅ `HtmlRenderer` 输出 `data-shortcode` 属性（`<div data-shortcode="tag">` / `<span data-shortcode="tag">`）
+
+> **备注**: 短代码解析器（`ShortcodeStarter` 块级 + `InlineParser` 行内）识别 `{% ... %}` 语法，解析标签名和参数列表。参数解析器支持三种格式混用：裸字符串位置参数、双引号/单引号字符串、`key=value` 键值对。块级短代码通过 `{% endtag %}` 闭合，行内短代码为自闭合。渲染器通过 `data-shortcode` 属性将短代码语义传递给前端，便于 JS 插件进一步处理。
+
+**覆盖率**: 8/8 (100%)
 
 ---
 
@@ -688,7 +732,7 @@
 |---|------|--------|------|--------|
 | 1 | 标题 | 17/17 | 0 | 100% |
 | 2 | 段落与空行 | 5/5 | 0 | 100% |
-| 3 | 代码块 | 14/14 | 0 | 100% |
+| 3 | 代码块 | 17/17 | 0 | 100% |
 | 4 | 块引用 | 8/8 | 0 | 100% |
 | 5 | 列表 | 20/20 | 0 | 100% |
 | 6 | 分隔线 | 6/6 | 0 | 100% |
@@ -708,8 +752,9 @@
 | 20 | 流式解析引擎 | 27/27 | 0 | 100% |
 | 21 | 字符与编码 | 10/10 | 0 | 100% |
 | 22 | HTML 生成器 | 12/12 | 0 | 100% |
-| 23 | 语法验证/Linting | 14/14 | 0 | 100% |
-| | **总计** | **356/356** | **0** | **100%** |
+| 23 | 语法验证/Linting | 19/19 | 0 | 100% |
+| 24 | 短代码（Shortcodes） | 8/8 | 0 | 100% |
+| | **总计** | **372/372** | **0** | **100%** |
 
 ---
 
@@ -734,12 +779,17 @@ Results are written to `/tmp/commonmark-results.txt`.
 
 `MarkdownFlavour` controls which syntax features are enabled:
 
-| Property | CommonMark | GFM | Extended (default) |
-|----------|-----------|-----|---------------------|
-| `blockStarters` | core only | core + table | all |
-| `postProcessors` | none | none | heading ID, abbreviation, etc. |
-| `enableGfmAutolinks` | `false` | `true` | `true` |
-| `enableExtendedInline` | `false` | `true` | `true` |
+| Property | CommonMark | GFM | MarkdownExtra | Extended (default) |
+|----------|-----------|-----|---------------|---------------------|
+| `blockStarters` | core only | core + table | core + table + footnote + deflist + fenced code | all |
+| `postProcessors` | none | none | abbreviation | heading ID, abbreviation, etc. |
+| `enableGfmAutolinks` | `false` | `true` | `false` | `true` |
+| `enableExtendedInline` | `false` | `true` | `true` | `true` |
+
+MarkdownExtra flavour (`MarkdownExtraFlavour` object):
+- 表格（GFM 兼容）、脚注（`[^label]` 定义与引用）、定义列表（`: definition`）
+- 缩写（`*[abbr]: Full Text`）、围栏代码块（`` ``` `` 和 `~~~`）
+- 基于 [PHP Markdown Extra](https://michelf.ca/projects/php-markdown/extra/) 规范子集
 
 Extended inline syntax (disabled in CommonMark):
 - `~~strikethrough~~`, `==highlight==`, `++insert++`
@@ -801,19 +851,19 @@ val html = HtmlRenderer.renderMarkdown(input, flavour = CommonMarkFlavour)
 
 ### 三、解析器能力增强
 
+> **备注**: 自定义语法规则/短代码、多规范兼容（MarkdownExtra flavour）、代码块增强已实现，详见第 24 章「短代码」、第 3 章「代码块」和 Flavour System 章节。
+
 | 优先级 | 特性 | 说明 |
 |--------|------|------|
-| **P2** | 自定义语法规则/短代码 | 允许用户注册自定义短代码解析器，如 `{% youtube 123456 %}` 解析为嵌入代码。极大提升解析器扩展性，适配用户个性化场景（自定义组件、业务专属语法） |
-| **P2** | 多规范兼容 | 支持配置解析规范（CommonMark 0.30/0.31、GFM 0.29/最新、Markdown Extra、Pandoc 子集），适配不同平台（GitHub/GitLab/Notion）的语法差异 |
-| **P2** | 代码块增强 | `` ```python {hl_lines="1 3-5" linenums=true} `` — 解析代码块 info string 中的行号、行高亮等属性参数，生成 AST 节点携带额外元数据，满足技术文档代码展示需求 |
 | **P3** | 解析缓存 | 对相同 Markdown 文本缓存解析后的 AST 节点树，避免重复解析，降低 CMS/文档系统等高频场景的 CPU/内存消耗 |
 | **P3** | HTML 反向解析 | 将 HTML 文本反向解析为 Markdown（保留标题、列表、链接、图片等基础格式），满足富文本编辑器内容导入/迁移场景 |
 
 ### 四、特殊场景适配
 
+> **备注**: 无障碍支持（WCAG）已实现，详见第 23 章「语法验证/Linting — WCAG 无障碍检测」。
+
 | 优先级 | 特性 | 语法示例 | 说明 |
 |--------|------|----------|------|
-| **P2** | 无障碍支持（WCAG） | — | 解析时检查图片 alt 文本是否缺失、标题层级是否连续、无文本链接自动补充描述等，生成符合 WCAG 标准的诊断信息，适配政府/企业合规要求 |
 | **P3** | Wiki 链接 | `[[page]]` / `[[page\|显示文本]]` | Obsidian 风格内部链接语法，适用于知识库/笔记场景 |
 | **P3** | Figure / 图片标题 | 独立段落中的图片 | 将独立段落中的图片渲染为 `<figure>` + `<figcaption>`（Pandoc implicit_figures） |
 | **P3** | 参考文献引用 | `[@smith2020]` + `[^bibliography]: smith2020: ...` | 标准化参考文献引用语法，针对学术论文/技术专著场景 |

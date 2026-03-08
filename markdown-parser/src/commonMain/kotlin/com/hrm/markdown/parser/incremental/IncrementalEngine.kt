@@ -189,7 +189,7 @@ class IncrementalEngine(
             registry = buildRegistry(newSource),
             inlineParserFactory = { doc ->
                 doc.linkDefinitions.putAll(_document.linkDefinitions)
-                InlineParser(doc, customEmojiMap, enableAsciiEmoticons, flavour.enableGfmAutolinks, flavour.enableExtendedInline)
+                InlineParser(doc, customEmojiMap, enableAsciiEmoticons, flavour.enableGfmAutolinks, flavour.enableExtendedInline, flavour.enableEmphasisCoalescing, flavour.enableStrikethrough)
             }
         )
 
@@ -258,7 +258,7 @@ class IncrementalEngine(
         val parser = BlockParser(
             source = _sourceText,
             registry = buildRegistry(_sourceText),
-            inlineParserFactory = { doc -> InlineParser(doc, customEmojiMap, enableAsciiEmoticons, flavour.enableGfmAutolinks, flavour.enableExtendedInline) }
+            inlineParserFactory = { doc -> InlineParser(doc, customEmojiMap, enableAsciiEmoticons, flavour.enableGfmAutolinks, flavour.enableExtendedInline, flavour.enableEmphasisCoalescing, flavour.enableStrikethrough) }
         )
         _document = parser.parse()
 
@@ -304,7 +304,7 @@ class IncrementalEngine(
             registry = buildRegistry(newSource),
             inlineParserFactory = { doc ->
                 doc.linkDefinitions.putAll(_document.linkDefinitions)
-                InlineParser(doc, customEmojiMap, enableAsciiEmoticons, flavour.enableGfmAutolinks, flavour.enableExtendedInline)
+                InlineParser(doc, customEmojiMap, enableAsciiEmoticons, flavour.enableGfmAutolinks, flavour.enableExtendedInline, flavour.enableEmphasisCoalescing, flavour.enableStrikethrough)
             }
         )
 
@@ -529,7 +529,7 @@ class IncrementalEngine(
         val repairedContent = inlineText + repairSuffix
         val tempDoc = Document()
         tempDoc.linkDefinitions.putAll(_document.linkDefinitions)
-        val inlineParser = InlineParser(tempDoc, customEmojiMap, enableAsciiEmoticons, flavour.enableGfmAutolinks, flavour.enableExtendedInline)
+        val inlineParser = InlineParser(tempDoc, customEmojiMap, enableAsciiEmoticons, flavour.enableGfmAutolinks, flavour.enableExtendedInline, flavour.enableEmphasisCoalescing, flavour.enableStrikethrough)
         node.clearChildren()
         inlineParser.parseInlines(repairedContent, node)
     }

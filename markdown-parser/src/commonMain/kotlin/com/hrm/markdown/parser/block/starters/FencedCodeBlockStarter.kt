@@ -47,6 +47,8 @@ internal class FencedCodeBlockStarter : BlockStarter {
             fenceIndent = indent,
             attributes = attributes,
         )
+        // parse extended code block attributes from the attribute pairs
+        parseCodeBlockEnhancements(block, attributes.pairs)
         block.lineRange = LineRange(lineIdx, lineIdx + 1)
 
         val ob = OpenBlock(block, contentStartLine = lineIdx, lastLineIndex = lineIdx)
@@ -75,5 +77,46 @@ internal class FencedCodeBlockStarter : BlockStarter {
 
     companion object {
         private val INFO_LANG_SPLIT_REGEX = Regex("\\s+")
+
+        /**
+         * parses extended code block attributes: hl_lines, linenums, startline.
+         * these are extracted from the attribute pairs parsed by AttributeParser.
+         */
+        fun parseCodeBlockEnhancements(block: FencedCodeBlock, pairs: Map<String, String>) {
+            // hl_lines="1 3-5" -> list of IntRange
+            pairs["hl_lines"]?.let { hlLines ->
+                block.highlightLines = parseHighlightLines(hlLines)
+            }
+
+            // linenums=true/false
+            pairs["linenums"]?.let { linenums ->
+                block.showLineNumbers = linenums.equals("true", ignoreCase = true)
+            }
+
+            // startline=10
+            pairs["startline"]?.let { startline ->
+                startline.toIntOrNull()?.let { block.startLineNumber = it }
+            }
+        }
+
+        /**
+         * parses highlight line specification like "1 3-5 8" into a list of IntRange.
+         */
+        fun parseHighlightLines(spec: String): List<IntRange> {
+            val ranges = mutableListOf<IntRange>()
+            for (part in spec.trim().split(Regex("\\s+"))) {
+                if (part.isEmpty()) continue
+                val dashIdx = part.indexOf('-')
+                if (dashIdx > 0) {
+                    val start = part.substring(0, dashIdx).toIntOrNull() ?: continue
+                    val end = part.substring(dashIdx + 1).toIntOrNull() ?: continue
+                    ranges.add(start..end)
+                } else {
+                    val line = part.toIntOrNull() ?: continue
+                    ranges.add(line..line)
+                }
+            }
+            return ranges
+        }
     }
 }

@@ -110,6 +110,15 @@ class FencedCodeBlock(
     override var literal: String = "",
     var attributes: Attributes = Attributes(),
 ) : LeafNode() {
+    /** highlighted line ranges parsed from `hl_lines` attribute, e.g. "1 3-5" -> [1..1, 3..5] */
+    var highlightLines: List<IntRange> = emptyList()
+
+    /** whether to show line numbers, parsed from `linenums` attribute */
+    var showLineNumbers: Boolean = false
+
+    /** starting line number, parsed from `startline` attribute (default 1) */
+    var startLineNumber: Int = 1
+
     override fun <R> accept(visitor: NodeVisitor<R>): R = visitor.visitFencedCodeBlock(this)
 }
 
@@ -402,4 +411,19 @@ class ColumnItem(
 class PageBreak : LeafNode() {
     override val literal: String get() = ""
     override fun <R> accept(visitor: NodeVisitor<R>): R = visitor.visitPageBreak(this)
+}
+
+/**
+ * block-level shortcode: `{% tag arg1 "arg2" key=value %}...{% endtag %}`.
+ *
+ * self-closing shortcodes (no end tag) are also represented as a block
+ * with empty children.
+ */
+class ShortcodeBlock(
+    /** shortcode tag name, e.g. "youtube", "include" */
+    var tagName: String = "",
+    /** positional and keyword arguments */
+    var args: Map<String, String> = emptyMap(),
+) : ContainerNode() {
+    override fun <R> accept(visitor: NodeVisitor<R>): R = visitor.visitShortcodeBlock(this)
 }

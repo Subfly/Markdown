@@ -39,6 +39,7 @@ class LintingPostProcessor : PostProcessor {
         checkDuplicateHeadingIds(document)
         checkFootnoteReferences(document)
         checkInlineIssues(document)
+        checkWcagAccessibility(document)
         result.sort()
     }
 
@@ -267,5 +268,123 @@ class LintingPostProcessor : PostProcessor {
                 checkInlineIssuesRecursive(child)
             }
         }
+    }
+
+    // ────── wcag accessibility checks ──────
+
+    /**
+     * runs all wcag accessibility checks on the document.
+     */
+    private fun checkWcagAccessibility(document: Document) {
+        checkWcagRecursive(document)
+    }
+
+    private fun checkWcagRecursive(node: Node) {
+        when (node) {
+            is Link -> {
+                // check for empty link text
+                val linkText = extractPlainText(node).trim()
+                if (linkText.isEmpty()) {
+                    result.add(
+                        Diagnostic(
+                            severity = DiagnosticSeverity.WARNING,
+                            code = DiagnosticCode.EMPTY_LINK_TEXT,
+                            message = "Link has no text content",
+                            line = node.lineRange.startLine,
+                        )
+                    )
+                } else if (isNonDescriptiveLinkText(linkText)) {
+                    result.add(
+                        Diagnostic(
+                            severity = DiagnosticSeverity.WARNING,
+                            code = DiagnosticCode.LINK_TEXT_NOT_DESCRIPTIVE,
+                            message = "Link text \"$linkText\" is not descriptive",
+                            line = node.lineRange.startLine,
+                        )
+                    )
+                }
+            }
+            is Image -> {
+                // check for long alt text (> 125 chars)
+                val altText = extractPlainText(node)
+                if (altText.length > MAX_ALT_TEXT_LENGTH) {
+                    result.add(
+                        Diagnostic(
+                            severity = DiagnosticSeverity.WARNING,
+                            code = DiagnosticCode.LONG_ALT_TEXT,
+                            message = "Image alt text is ${altText.length} characters (recommended max $MAX_ALT_TEXT_LENGTH)",
+                            line = node.lineRange.startLine,
+                        )
+                    )
+                }
+            }
+            is FencedCodeBlock -> {
+                // check for missing language
+                if (node.language.isEmpty()) {
+                    result.add(
+                        Diagnostic(
+                            severity = DiagnosticSeverity.INFO,
+                            code = DiagnosticCode.MISSING_LANG_IN_CODE_BLOCK,
+                            message = "Fenced code block has no language specified",
+                            line = node.lineRange.startLine,
+                        )
+                    )
+                }
+            }
+            is Table -> {
+                // check for empty header cells
+                checkTableHeaders(node)
+            }
+            else -> {}
+        }
+        if (node is ContainerNode) {
+            for (child in node.children) {
+                checkWcagRecursive(child)
+            }
+        }
+    }
+
+    /**
+     * checks if table header cells are empty.
+     */
+    private fun checkTableHeaders(table: Table) {
+        val head = table.children.filterIsInstance<TableHead>().firstOrNull() ?: return
+        val headerRow = head.children.filterIsInstance<TableRow>().firstOrNull() ?: return
+        val headerCells = headerRow.children.filterIsInstance<TableCell>()
+        val allEmpty = headerCells.all { extractPlainText(it).isBlank() }
+        if (allEmpty && headerCells.isNotEmpty()) {
+            result.add(
+                Diagnostic(
+                    severity = DiagnosticSeverity.WARNING,
+                    code = DiagnosticCode.TABLE_MISSING_HEADER,
+                    message = "Table has empty header cells",
+                    line = table.lineRange.startLine,
+                )
+            )
+        }
+    }
+
+    /**
+     * checks if link text is generic/non-descriptive.
+     */
+    private fun isNonDescriptiveLinkText(text: String): Boolean {
+        val normalized = text.lowercase().trim()
+        return normalized in NON_DESCRIPTIVE_LINK_TEXTS
+    }
+
+    companion object {
+        const val MAX_ALT_TEXT_LENGTH = 125
+
+        private val NON_DESCRIPTIVE_LINK_TEXTS = setOf(
+            "click here",
+            "here",
+            "read more",
+            "more",
+            "link",
+            "this",
+            "this link",
+            "go",
+            "go here",
+        )
     }
 }

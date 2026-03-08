@@ -263,3 +263,18 @@ class KeyboardInput(
 ) : LeafNode() {
     override fun <R> accept(visitor: NodeVisitor<R>): R = visitor.visitKeyboardInput(this)
 }
+
+/**
+ * inline shortcode: `{% tag arg1 "arg2" key=value %}`.
+ *
+ * inline shortcodes cannot have content (no end tag) and are leaf nodes.
+ */
+class ShortcodeInline(
+    /** shortcode tag name */
+    var tagName: String = "",
+    /** positional and keyword arguments */
+    var args: Map<String, String> = emptyMap(),
+) : LeafNode() {
+    override val literal: String get() = tagName
+    override fun <R> accept(visitor: NodeVisitor<R>): R = visitor.visitShortcodeInline(this)
+}

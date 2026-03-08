@@ -55,4 +55,21 @@ interface MarkdownFlavour {
 
     val enableGfmAutolinks: Boolean get() = true
     val enableExtendedInline: Boolean get() = true
+
+    /**
+     * Whether to enable `~~strikethrough~~` syntax (double tilde).
+     *
+     * This is separate from [enableExtendedInline] because GFM includes
+     * strikethrough as a core extension but not other extended inline features.
+     * Defaults to true; CommonMark overrides to false.
+     */
+    val enableStrikethrough: Boolean get() = true
+
+    /**
+     * Whether to coalesce (flatten) redundant nested emphasis of the same type.
+     *
+     * When true, `<strong><strong>foo</strong></strong>` collapses to `<strong>foo</strong>`.
+     * This matches GFM spec 0.29 behavior which differs from CommonMark 0.31.
+     */
+    val enableEmphasisCoalescing: Boolean get() = false
 }

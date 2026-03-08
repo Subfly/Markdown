@@ -136,6 +136,7 @@ class BlockParser(
                 // 检查块是否被关闭围栏/定界符关闭
                 // （围栏代码块、数学块或前置元数据）
                 if (ob.node is FencedCodeBlock || ob.node is MathBlock || ob.node is CustomContainer
+                    || ob.node is ShortcodeBlock
                     || (ob.node is HtmlBlock && ob.htmlType in 1..5)) {
                     closedByFenceOrMath = true
                 }
@@ -585,6 +586,23 @@ class BlockParser(
                 cursor.restore(snap)
                 true
             }
+            is ShortcodeBlock -> {
+                // check for closing end tag: {% endtag %}
+                val snap = cursor.snapshot()
+                cursor.advanceSpaces(3)
+                val rest = cursor.rest().trim()
+                if (rest.startsWith("{%") && rest.endsWith("%}")) {
+                    val inner = rest.removePrefix("{%").removeSuffix("%}").trim()
+                    if (inner == "end${node.tagName}") {
+                        ob.lastLineIndex = currentLine
+                        ob.isFenced = false
+                        cursor.restore(snap)
+                        return false
+                    }
+                }
+                cursor.restore(snap)
+                true
+            }
             // 单行块，永远不继续
             is Heading -> false
             is SetextHeading -> false
@@ -731,7 +749,8 @@ class BlockParser(
                 node.lineRange = LineRange(node.lineRange.startLine, lineIdx + 1)
             }
             is ListBlock, is ListItem, is BlockQuote, is Document,
-            is DefinitionList, is DefinitionDescription, is CustomContainer -> {
+            is DefinitionList, is DefinitionDescription, is CustomContainer,
+            is ShortcodeBlock -> {
                 // 容器块：创建新段落或处理懒延续
                 handleContainerLine(tip, cursor, lineIdx)
             }
@@ -818,6 +837,9 @@ class BlockParser(
             }
             is CustomContainer -> {
                 // 空行不终止自定义容器，由关闭围栏 ::: 决定
+            }
+            is ShortcodeBlock -> {
+                // blank lines do not close shortcode blocks, only {% endtag %} does
             }
             else -> {
                 // 其他块：空行
@@ -968,6 +990,9 @@ class BlockParser(
                 node.lineRange = LineRange(ob.contentStartLine, ob.lastLineIndex + 1)
             }
             is CustomContainer -> {
+                node.lineRange = LineRange(ob.contentStartLine, ob.lastLineIndex + 1)
+            }
+            is ShortcodeBlock -> {
                 node.lineRange = LineRange(ob.contentStartLine, ob.lastLineIndex + 1)
             }
             is Document -> {

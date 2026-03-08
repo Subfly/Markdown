@@ -63,6 +63,8 @@ interface NodeVisitor<R> {
     fun visitStyledText(node: StyledText): R
     fun visitAbbreviation(node: Abbreviation): R
     fun visitKeyboardInput(node: KeyboardInput): R
+    fun visitShortcodeBlock(node: ShortcodeBlock): R
+    fun visitShortcodeInline(node: ShortcodeInline): R
 }
 
 /**
@@ -125,4 +127,6 @@ abstract class DefaultNodeVisitor<R>(private val defaultValue: R) : NodeVisitor<
     override fun visitStyledText(node: StyledText): R = defaultValue
     override fun visitAbbreviation(node: Abbreviation): R = defaultValue
     override fun visitKeyboardInput(node: KeyboardInput): R = defaultValue
+    override fun visitShortcodeBlock(node: ShortcodeBlock): R = defaultValue
+    override fun visitShortcodeInline(node: ShortcodeInline): R = defaultValue
 }

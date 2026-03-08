@@ -14,7 +14,7 @@ A high-performance Markdown parsing and rendering library built with Kotlin Mult
 
 - **High-Performance Parsing**: AST-based recursive descent parser with incremental update support.
 - **Multi-platform Consistency**: Consistent rendering on Android, iOS, Desktop (JVM), and Web (Wasm/JS) via Compose Multiplatform.
-- **Comprehensive Syntax Coverage**: 229/243 Markdown features supported (94% coverage), including CommonMark, GFM, and popular extensions.
+- **Comprehensive Syntax Coverage**: 372/372 Markdown features supported (100% coverage), CommonMark Spec 0.31.2 fully compliant (652/652), plus GFM and popular extensions.
 - **Built-in Image Loading**: Integrated Coil3 + Ktor3 for out-of-the-box network image loading with size specification and adaptive width. Custom image renderers are also supported.
 - **Streaming Rendering**: First-class support for LLM token-by-token output. Incremental parsing and throttled rendering (5fps) eliminate flicker during streaming.
 - **Customizable Theming**: Full theme system with 30+ configurable properties. Built-in light/dark themes (GitHub style) with automatic system theme detection.
@@ -225,17 +225,21 @@ For a detailed feature support list, see: [PARSER_COVERAGE_ANALYSIS.md](./markdo
 
 | Category | Coverage |
 |----------|----------|
-| Headings | 88% |
+| Headings | 100% |
 | Paragraphs | 100% |
-| Code Blocks | 93% |
+| Code Blocks | 100% |
 | Block Quotes | 100% |
 | Lists | 100% |
-| Tables (GFM) | 83% |
+| Tables (GFM) | 100% |
 | Emphasis | 100% |
-| Links | 95% |
-| Inline Extensions | 86% |
+| Links | 100% |
+| Inline Extensions | 100% |
 | Incremental Parsing | 100% |
-| **Overall** | **94%** |
+| Linting / WCAG | 100% |
+| Shortcodes | 100% |
+| **Overall** | **100%** |
+
+**CommonMark Spec 0.31.2: 652/652 (100%)**
 
 ## 📄 License
 

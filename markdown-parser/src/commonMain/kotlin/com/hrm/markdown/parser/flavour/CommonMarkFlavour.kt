@@ -77,4 +77,5 @@ object CommonMarkFlavour : MarkdownFlavour {
 
     override val enableGfmAutolinks: Boolean = false
     override val enableExtendedInline: Boolean = false
+    override val enableStrikethrough: Boolean = false
 }

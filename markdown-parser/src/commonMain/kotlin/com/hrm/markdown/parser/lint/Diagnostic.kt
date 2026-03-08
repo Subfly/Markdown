@@ -43,6 +43,21 @@ enum class DiagnosticCode(val description: String) {
 
     /** 空链接目标。 */
     EMPTY_LINK_DESTINATION("Empty link destination"),
+
+    /** link with no text content, e.g. [](url). */
+    EMPTY_LINK_TEXT("Empty link text"),
+
+    /** link text uses generic non-descriptive phrases like "click here". */
+    LINK_TEXT_NOT_DESCRIPTIVE("Link text not descriptive"),
+
+    /** fenced code block without language specified. */
+    MISSING_LANG_IN_CODE_BLOCK("Missing language in code block"),
+
+    /** table with empty header cells. */
+    TABLE_MISSING_HEADER("Table missing header content"),
+
+    /** image alt text exceeding 125 characters. */
+    LONG_ALT_TEXT("Long alt text"),
 }
 
 /**
