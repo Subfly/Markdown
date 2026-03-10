@@ -81,6 +81,5 @@ internal class BibliographyProcessor : PostProcessor {
         is HardLineBreak -> "\n"
         is ContainerNode -> node.children.joinToString("") { extractPlainText(it) }
         is LeafNode -> node.literal
-        else -> ""
     }
 }

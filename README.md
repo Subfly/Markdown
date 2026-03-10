@@ -1,73 +1,95 @@
-# Kotlin Multiplatform Markdown Rendering Library
+<div align="center">
 
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.3.10-blue.svg)](https://kotlinlang.org)
-[![Compose Multiplatform](https://img.shields.io/badge/Compose%20Multiplatform-1.10.1-brightgreen.svg)](https://www.jetbrains.com/lp/compose-multiplatform/)
-[![Android API](https://img.shields.io/badge/Android%20API-24%2B-brightgreen.svg)](https://android-arsenal.com/api?level=24)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Maven Central](https://img.shields.io/maven-central/v/io.github.huarangmeng/markdown-parser.svg)](https://central.sonatype.com/search?q=io.github.huarangmeng.markdown)
+# 🖊️ KMP Markdown
 
-A high-performance Markdown parsing and rendering library built with Kotlin Multiplatform (KMP). It delivers consistent rendering across Android, iOS, Desktop (JVM), and Web (Wasm/JS) platforms using Compose Multiplatform.
+**A Blazing-Fast, Cross-Platform Markdown Engine for Compose Multiplatform**
 
-[中文版本](./README_zh.md)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.3.10-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org)
+[![Compose Multiplatform](https://img.shields.io/badge/Compose%20Multiplatform-1.10.1-4285F4?logo=jetpackcompose&logoColor=white)](https://www.jetbrains.com/lp/compose-multiplatform/)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.huarangmeng/markdown-parser.svg?color=orange&label=Maven%20Central)](https://central.sonatype.com/search?q=io.github.huarangmeng.markdown)
+[![CommonMark](https://img.shields.io/badge/CommonMark%200.31.2-652%2F652%20✓-brightgreen)](https://spec.commonmark.org/0.31.2/)
+[![Android API](https://img.shields.io/badge/Android%20API-24%2B-34A853?logo=android&logoColor=white)](https://android-arsenal.com/api?level=24)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-## 🌟 Key Features
+*One library. One codebase. Pixel-perfect Markdown on Android, iOS, Desktop & Web.*
 
-- **High-Performance Parsing**: AST-based recursive descent parser with incremental update support.
-- **Multi-platform Consistency**: Consistent rendering on Android, iOS, Desktop (JVM), and Web (Wasm/JS) via Compose Multiplatform.
-- **Comprehensive Syntax Coverage**: 372/372 Markdown features supported (100% coverage), CommonMark Spec 0.31.2 fully compliant (652/652), plus GFM and popular extensions.
-- **Built-in Image Loading**: Integrated Coil3 + Ktor3 for out-of-the-box network image loading with size specification and adaptive width. Custom image renderers are also supported.
-- **Streaming Rendering**: First-class support for LLM token-by-token output. Incremental parsing and throttled rendering (5fps) eliminate flicker during streaming.
-- **Customizable Theming**: Full theme system with 30+ configurable properties. Built-in light/dark themes (GitHub style) with automatic system theme detection.
-- **LaTeX Math Support**: Inline (`$...$`) and block (`$$...$$`) math formulas via integrated LaTeX rendering engine.
-- **Incremental Parsing**: Edit-aware parser that only re-parses affected regions for real-time editing scenarios.
-- **Pagination Support**: Progressive rendering for ultra-long documents (500+ blocks) with automatic load-more on scroll.
+[English](./README.md) · [中文](./README_zh.md)
 
-## 📐 Supported Markdown Features (229+)
+</div>
 
-<details>
-<summary><b>Block Elements</b> — headings, paragraphs, code blocks, lists, tables, and more</summary>
+---
 
-- **Headings**: ATX headings (`# ~ ######`), Setext headings (`===` / `---`), custom heading IDs (`{#id}`)
-- **Paragraphs**: Multi-line merging, blank line separation, lazy continuation
-- **Code Blocks**: Fenced (`` ``` `` / `~~~`) with language info string, indented (4 spaces/tab)
-- **Block Quotes**: Nested quotes, lazy continuation, inner block elements
-- **Lists**: Unordered (`-`, `*`, `+`), ordered (`1.`, `1)`), task lists (`- [ ]` / `- [x]`), nested lists, tight/loose distinction
-- **Tables (GFM)**: Column alignment (`:---`, `:---:`, `---:`), inline elements in cells, escaped pipes
-- **Thematic Breaks**: `---`, `***`, `___`
-- **HTML Blocks**: All 7 CommonMark types
-- **Link Reference Definitions**: Full support with title variants
-</details>
+## ✨ Why KMP Markdown?
 
-<details>
-<summary><b>Inline Elements</b> — emphasis, links, images, code, and more</summary>
+|  | Feature | Description |
+|--|---------|-------------|
+| 🚀 | **Blazing Fast** | AST-based recursive descent parser with incremental parsing — only re-parses what changed |
+| 🌍 | **True Cross-Platform** | One codebase renders identically on **Android**, **iOS**, **Desktop (JVM)**, **Web (Wasm/JS)** |
+| 📐 | **100% Coverage** | 372 Markdown features, **652/652 CommonMark Spec** tests passing, plus GFM & 20+ extensions |
+| 🤖 | **LLM-Ready Streaming** | First-class token-by-token rendering with 5fps throttling — zero flicker during AI generation |
+| 🎨 | **Fully Themeable** | 30+ configurable properties, built-in GitHub light/dark themes, auto system detection |
+| 📊 | **LaTeX Math** | Inline `$...$` and block `$$...$$` formulas via integrated LaTeX rendering engine |
+| 🔍 | **Built-in Linting** | 13+ diagnostic rules including WCAG accessibility checks — catch issues at parse time |
+| 🖼️ | **Image Loading** | Coil3 + Ktor3 out-of-the-box, with size specification and custom renderer support |
+| 📄 | **Pagination** | Progressive rendering for ultra-long documents (500+ blocks) with auto load-more |
 
-- **Emphasis**: Bold (`**`/`__`), italic (`*`/`_`), bold-italic (`***`/`___`), nested emphasis
-- **Strikethrough (GFM)**: `~~text~~`, `~text~`
-- **Inline Code**: Single/multi backtick, space stripping, no inner parsing
-- **Links**: Inline links, reference links (full/collapsed/shortcut), autolinks (URL/email/GFM bare URL)
-- **Images**: Inline, reference, nested in links
-- **Inline HTML**: Tags, comments, CDATA, processing instructions
-- **Escapes & Entities**: Backslash escapes, named/numeric HTML entities
-- **Hard/Soft Line Breaks**: Trailing spaces, backslash
-</details>
+---
 
-<details>
-<summary><b>Extensions</b> — math, footnotes, admonitions, and more</summary>
+## 🎬 See It in Action
 
-- **Math**: Inline `$...$`, block `$$...$$`
-- **Footnotes**: `[^label]` references, `[^label]: content` definitions, multi-line, block elements in footnotes
-- **Admonitions**: `> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]`, `> [!CAUTION]`
-- **Highlight**: `==text==`
-- **Superscript / Subscript**: `^text^`, `~text~`, `<sup>`, `<sub>`
-- **Insert Text**: `++text++`
-- **Emoji**: `:emoji_name:` shortcodes, Unicode emoji
-- **Definition Lists**: Term + `: definition` format
-- **Front Matter**: YAML (`---`) and TOML (`+++`)
-</details>
+### 🤖 LLM Streaming Rendering
 
-## 🛠️ Usage
+Real-time token-by-token output with incremental parsing — no flicker, no re-render.
 
-In a Compose Multiplatform project, use the `Markdown` composable directly:
+<p align="center">
+  <img src="./images/llm_stream.png" width="700" alt="LLM Streaming Rendering Demo" />
+</p>
+
+### 🔍 Syntax Diagnostics & Linting
+
+Built-in linting with WCAG accessibility checks — heading jumps, broken footnotes, empty links, and more.
+
+<p align="center">
+  <img src="./images/Diagnostic.png" width="700" alt="Markdown Diagnostics & Linting" />
+</p>
+
+### 🌐 Rich HTML & Extension Support
+
+Full HTML block/inline support, GFM tables, admonitions, math, code highlighting, and 20+ extensions.
+
+<p align="center">
+  <img src="./images/html_support.png" width="700" alt="HTML & Extension Support" />
+</p>
+
+---
+
+## 🚀 Quick Start
+
+### Installation
+
+Add to your `gradle/libs.versions.toml`:
+
+```toml
+[versions]
+markdown = "1.0.3"
+
+[libraries]
+markdown-parser = { module = "io.github.huarangmeng:markdown-parser", version.ref = "markdown" }
+markdown-renderer = { module = "io.github.huarangmeng:markdown-renderer", version.ref = "markdown" }
+```
+
+Then in your module's `build.gradle.kts`:
+
+```kotlin
+dependencies {
+    implementation(libs.markdown.parser)
+    implementation(libs.markdown.renderer)
+}
+```
+
+> 💡 `markdown-renderer` bundles Coil3 + Ktor3 for image loading as transitive dependencies.
+
+### Basic Usage
 
 ```kotlin
 import com.hrm.markdown.renderer.Markdown
@@ -89,21 +111,25 @@ fun MyScreen() {
             ```
         """.trimIndent(),
         modifier = Modifier.fillMaxSize(),
-        theme = MarkdownTheme.auto(), // Automatically follows system light/dark mode
+        theme = MarkdownTheme.auto(), // Follows system light/dark mode
     )
 }
 ```
 
-### Streaming Rendering (LLM Integration)
+That's it — **3 lines** to render beautiful Markdown across all platforms.
 
-For LLM token-by-token output scenarios, use the `isStreaming` parameter to enable incremental parsing and throttled rendering:
+---
+
+## 🤖 LLM Streaming Integration
+
+Purpose-built for AI/LLM scenarios. Enable `isStreaming` for flicker-free incremental rendering:
 
 ```kotlin
 var text by remember { mutableStateOf("") }
 var isStreaming by remember { mutableStateOf(true) }
 
 LaunchedEffect(Unit) {
-    tokens.collect { token ->
+    llmTokenFlow.collect { token ->
         text += token
     }
     isStreaming = false
@@ -111,21 +137,29 @@ LaunchedEffect(Unit) {
 
 Markdown(
     markdown = text,
-    isStreaming = isStreaming,
+    isStreaming = isStreaming, // Enables incremental parsing + 5fps throttled rendering
 )
 ```
 
-### Customizing Theme
+**What happens under the hood:**
+- ✅ Only re-parses the "dirty" tail region — stable blocks are reused
+- ✅ Auto-closes unclosed fences, math blocks, emphasis during streaming
+- ✅ Lazy inline parsing — block structure first, inline elements on demand
+- ✅ FNV-1a content hashing for O(1) block stability detection
+
+---
+
+## 🎨 Theming
 
 ```kotlin
-// Use built-in themes
+// Built-in themes
 Markdown(markdown = text, theme = MarkdownTheme.light())  // GitHub Light
 Markdown(markdown = text, theme = MarkdownTheme.dark())   // GitHub Dark
-Markdown(markdown = text, theme = MarkdownTheme.auto())   // Follow system
+Markdown(markdown = text, theme = MarkdownTheme.auto())   // Auto-detect
 
-// Or fully customize
+// Full customization (30+ properties)
 Markdown(
-    markdown = markdownText,
+    markdown = text,
     theme = MarkdownTheme(
         headingStyles = listOf(
             TextStyle(fontSize = 32.sp, fontWeight = FontWeight.Bold),
@@ -133,28 +167,179 @@ Markdown(
         ),
         bodyStyle = TextStyle(fontSize = 16.sp),
         codeBlockBackground = Color(0xFFF5F5F5),
-        // 30+ configurable properties...
+        // ...and much more
     ),
-    onLinkClick = { url -> /* handle link click */ }
+    onLinkClick = { url -> /* handle click */ },
 )
 ```
 
-### Image Loading
+---
 
-The library includes built-in image loading powered by Coil3. Images in Markdown are automatically fetched and rendered:
+## 📐 Comprehensive Syntax Support (372 Features)
 
-```markdown
-![Alt text](https://example.com/image.png)
-![With size](https://example.com/image.png =200x100)
+<details>
+<summary><b>📦 Block Elements</b> — Everything you need for structured content</summary>
+
+| Feature | Details |
+|---------|---------|
+| **Headings** | ATX (`# ~ ######`), Setext (`===`/`---`), custom IDs (`{#id}`), auto-generated anchors |
+| **Paragraphs** | Multi-line merging, blank line separation, lazy continuation |
+| **Code Blocks** | Fenced (`` ``` ``/`~~~`) with language highlight (20+ languages), indented, line numbers, line highlighting |
+| **Block Quotes** | Nested, lazy continuation, inner block elements |
+| **Lists** | Unordered/ordered/task lists, nested, tight/loose distinction |
+| **Tables (GFM)** | Column alignment, inline formatting in cells, escaped pipes |
+| **Thematic Breaks** | `---`, `***`, `___` |
+| **HTML Blocks** | All 7 CommonMark types |
+| **Link Reference Definitions** | Full support with title variants |
+
+</details>
+
+<details>
+<summary><b>✏️ Inline Elements</b> — Rich text formatting at your fingertips</summary>
+
+| Feature | Details |
+|---------|---------|
+| **Emphasis** | Bold, italic, bold-italic, nested, CJK-aware delimiter rules |
+| **Strikethrough** | `~~text~~`, `~text~` |
+| **Inline Code** | Single/multi backtick, space stripping |
+| **Links** | Inline, reference (full/collapsed/shortcut), autolinks, GFM bare URLs, attribute blocks |
+| **Images** | Inline, reference, `=WxH` size specification, attribute blocks, auto Figure conversion |
+| **Inline HTML** | Tags, comments, CDATA, processing instructions |
+| **Escapes & Entities** | 32 escapable characters, named/numeric HTML entities |
+| **Line Breaks** | Hard (spaces/backslash), soft |
+
+</details>
+
+<details>
+<summary><b>🔌 Extensions</b> — Power features beyond standard Markdown</summary>
+
+| Feature | Syntax |
+|---------|--------|
+| **Math (LaTeX)** | `$...$` inline, `$$...$$` block, `\tag{}`, `\ref{}` |
+| **Footnotes** | `[^label]` references, multi-line definitions, block content |
+| **Admonitions** | `> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]`, `> [!CAUTION]` |
+| **Highlight** | `==text==` |
+| **Super/Subscript** | `^text^`, `~text~`, `<sup>`, `<sub>` |
+| **Insert Text** | `++text++` |
+| **Emoji** | `:smile:` shortcodes (200+), ASCII emoticons (40+), custom mappings |
+| **Definition Lists** | Term + `: definition` format |
+| **Front Matter** | YAML (`---`) and TOML (`+++`) |
+| **TOC** | `[TOC]` with depth, exclude, ordering options |
+| **Custom Containers** | `:::type` with nesting, CSS classes, IDs |
+| **Diagram Blocks** | Mermaid, PlantUML, Graphviz, and more |
+| **Multi-Column Layout** | `:::columns` with percentage/pixel widths |
+| **Tab Blocks** | `=== "Tab Title"` MkDocs Material style |
+| **Shortcodes** | `{% tag args %}...{% endtag %}` with positional/keyword args |
+| **Spoiler Text** | `>!hidden text!<` Discord/Reddit style |
+| **Wiki Links** | `[[page]]`, `[[page\|display text]]` |
+| **Ruby Text** | `{漢字\|かんじ}` pronunciation annotations |
+| **Bibliography** | `[@key]` citations with `[^bibliography]` definitions |
+| **Block Attributes** | `{.class #id key=value}` kramdown/Pandoc style |
+| **Page Breaks** | `***pagebreak***` for print/PDF export |
+| **Styled Text** | `[text]{.red style="color:red"}` inline CSS |
+
+</details>
+
+---
+
+## 🔍 Built-in Linting & Diagnostics
+
+Enable once, catch problems everywhere:
+
+```kotlin
+val parser = MarkdownParser(enableLinting = true)
+val document = parser.parse(markdown)
+
+document.diagnostics.forEach { diagnostic ->
+    println("Line ${diagnostic.line}: [${diagnostic.severity}] ${diagnostic.message}")
+}
 ```
 
-To customize image rendering (e.g., add loading placeholders, error states), use the `imageContent` parameter:
+**13+ diagnostic rules:**
+
+| Rule | Severity | Description |
+|------|----------|-------------|
+| Heading level skip | ⚠️ WARNING | h1 → h3 without h2 |
+| Duplicate heading ID | ⚠️ WARNING | Multiple headings generate the same anchor |
+| Invalid footnote ref | ❌ ERROR | Reference to undefined footnote |
+| Unused footnote | ⚠️ WARNING | Footnote defined but never referenced |
+| Empty link target | ⚠️ WARNING | `[text]()` with no URL |
+| Missing alt text | ⚠️ WARNING | Images without description |
+| Empty link text | ⚠️ WARNING | Links invisible to screen readers |
+| Non-descriptive link | ⚠️ WARNING | "click here", "read more" links |
+| Missing code language | ℹ️ INFO | Fenced code without language tag |
+| Table missing header | ⚠️ WARNING | Screen readers need `<th>` |
+| Long alt text | ⚠️ WARNING | Alt text > 125 characters |
+
+> Follows [WCAG 2.1 AA](https://www.w3.org/TR/WCAG21/) standards for accessibility compliance.
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Your Compose App                        │
+├─────────────────────────────────────────────────────────────┤
+│  markdown-renderer        │  markdown-preview               │
+│  AST → Compose UI         │  Interactive demo & showcase    │
+│  Block/Inline renderers   │  Categorized feature browser    │
+│  Theme system             │                                 │
+├───────────────────────────┤                                 │
+│  markdown-parser                                            │
+│  Markdown → AST                                             │
+│  Streaming / Incremental / Flavour system                   │
+│  Linting / Diagnostics / Post-processors                    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+| Module | Description |
+|--------|-------------|
+| `:markdown-parser` | Core parsing engine — Markdown string → AST. Streaming, incremental, multi-flavour. |
+| `:markdown-renderer` | Rendering engine — AST → Compose UI. Theming, image loading, code highlighting. |
+| `:markdown-preview` | Interactive showcase — categorized demo of all supported features. |
+| `:composeApp` | Cross-platform demo app (Android/iOS/Desktop/Web). |
+| `:androidApp` | Android-specific demo app. |
+
+---
+
+## 🧪 Spec Compliance
+
+| Spec | Status |
+|------|--------|
+| [CommonMark 0.31.2](https://spec.commonmark.org/0.31.2/) | **652/652 (100%)** ✅ |
+| [GFM 0.29](https://github.github.com/gfm/) | Tables, task lists, strikethrough, autolinks ✅ |
+| [Markdown Extra](https://michelf.ca/projects/php-markdown/extra/) | Footnotes, definition lists, abbreviations, fenced code ✅ |
+
+### Flavour System
+
+Configure which syntax features to enable:
+
+```kotlin
+// Strict CommonMark — no extensions
+val doc = MarkdownParser(CommonMarkFlavour).parse(input)
+
+// GFM — CommonMark + tables, strikethrough, autolinks
+val doc = MarkdownParser(GFMFlavour).parse(input)
+
+// Extended (default) — everything enabled
+val doc = MarkdownParser().parse(input)
+
+// One-shot HTML rendering
+val html = HtmlRenderer.renderMarkdown(input, flavour = CommonMarkFlavour)
+```
+
+---
+
+## 🖼️ Custom Image Rendering
+
+Built-in Coil3 handles images automatically. Need custom rendering? Easy:
 
 ```kotlin
 Markdown(
     markdown = markdownText,
     imageContent = { data, modifier ->
-        // Access data.url, data.altText, data.width, data.height, etc.
+        // data.url, data.altText, data.width, data.height available
         AsyncImage(
             model = data.url,
             contentDescription = data.altText,
@@ -164,107 +349,80 @@ Markdown(
 )
 ```
 
-## 📦 Installation
-
-Add dependencies in `gradle/libs.versions.toml`:
-
-```toml
-[versions]
-markdown = "1.0.3"
-
-[libraries]
-markdown-parser = { module = "io.github.huarangmeng:markdown-parser", version.ref = "markdown" }
-markdown-renderer = { module = "io.github.huarangmeng:markdown-renderer", version.ref = "markdown" }
+Supports size specification in Markdown:
+```markdown
+![Photo](https://example.com/photo.png =400x300)
+![Auto width](https://example.com/photo.png =x200)
 ```
 
-Reference in your module's `build.gradle.kts`:
+---
 
-```kotlin
-dependencies {
-    implementation(libs.markdown.parser)
-    implementation(libs.markdown.renderer)
-}
+## ▶️ Running the Demo
+
+```bash
+# Android
+./gradlew :composeApp:assembleDebug
+
+# Desktop (JVM)
+./gradlew :composeApp:run
+
+# Web (Wasm)
+./gradlew :composeApp:wasmJsBrowserDevelopmentRun
+
+# Web (JS)
+./gradlew :composeApp:jsBrowserDevelopmentRun
+
+# iOS — open iosApp/ in Xcode
 ```
-
-> `markdown-renderer` includes Coil3 + Ktor3 for image loading, which are automatically included as transitive dependencies.
-
-## 🏗️ Project Structure
-
-- `:markdown-parser` — Core parsing engine. Converts Markdown strings into AST (Abstract Syntax Tree).
-- `:markdown-renderer` — Rendering engine. Maps AST nodes to Compose UI components.
-- `:markdown-preview` — Preview/showcase module. Provides interactive demonstrations for all supported Markdown features with a categorized navigation UI.
-- `:composeApp` — Cross-platform Demo application (Android/iOS/Desktop/Web).
-- `:androidApp` — Android-specific Demo application.
-
-## 🚀 Quick Start
-
-### Running the Demo App
-
-- **Android**: `./gradlew :composeApp:assembleDebug`
-- **Desktop**: `./gradlew :composeApp:run`
-- **Web (Wasm)**: `./gradlew :composeApp:wasmJsBrowserDevelopmentRun`
-- **Web (JS)**: `./gradlew :composeApp:jsBrowserDevelopmentRun`
-- **iOS**: Open the `iosApp` directory in Xcode and run.
 
 ### Running Tests
 
 ```bash
-# Parser module tests
-./gradlew :markdown-parser:jvmTest
-
-# Renderer module tests
-./gradlew :markdown-renderer:jvmTest
-
-# All tests
-./gradlew jvmTest
+./gradlew :markdown-parser:jvmTest      # Parser tests
+./gradlew :markdown-renderer:jvmTest     # Renderer tests
+./gradlew jvmTest                        # All tests
 ```
 
-## 📊 Roadmap & Coverage
+---
 
-For a detailed feature support list, see: [PARSER_COVERAGE_ANALYSIS.md](./markdown-parser/PARSER_COVERAGE_ANALYSIS.md)
+## 📊 Coverage Summary
 
-| Category | Coverage |
-|----------|----------|
-| Headings | 100% |
-| Paragraphs | 100% |
-| Code Blocks | 100% |
-| Block Quotes | 100% |
-| Lists | 100% |
-| Tables (GFM) | 100% |
-| Emphasis | 100% |
-| Links | 100% |
-| Inline Extensions | 100% |
-| Incremental Parsing | 100% |
-| Linting / WCAG | 100% |
-| Shortcodes | 100% |
-| **Overall** | **100%** |
+| # | Category | Coverage |
+|---|----------|----------|
+| 1 | Headings | 17/17 (100%) |
+| 2 | Paragraphs | 5/5 (100%) |
+| 3 | Code Blocks | 17/17 (100%) |
+| 4 | Block Quotes | 8/8 (100%) |
+| 5 | Lists | 20/20 (100%) |
+| 6 | Thematic Breaks | 6/6 (100%) |
+| 7 | Tables (GFM) | 11/11 (100%) |
+| 8 | HTML Blocks | 10/10 (100%) |
+| 9 | Link References | 12/12 (100%) |
+| 10 | Block Extensions | 85/85 (100%) |
+| 11 | Emphasis | 13/13 (100%) |
+| 12 | Strikethrough | 4/4 (100%) |
+| 13 | Inline Code | 8/8 (100%) |
+| 14 | Links | 27/27 (100%) |
+| 15 | Images | 17/17 (100%) |
+| 16 | Inline HTML | 8/8 (100%) |
+| 17 | Escapes & Entities | 10/10 (100%) |
+| 18 | Line Breaks | 5/5 (100%) |
+| 19 | Inline Extensions | 50/50 (100%) |
+| 20 | Streaming Engine | 27/27 (100%) |
+| 21 | Character & Encoding | 10/10 (100%) |
+| 22 | HTML Generator | 12/12 (100%) |
+| 23 | Linting / WCAG | 19/19 (100%) |
+| 24 | Shortcodes | 8/8 (100%) |
+| | **Total** | **372/372 (100%)** |
 
-**CommonMark Spec 0.31.2: 652/652 (100%)**
+> 📖 Full details: [PARSER_COVERAGE_ANALYSIS.md](./markdown-parser/PARSER_COVERAGE_ANALYSIS.md)
+
+---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ```
-MIT License
-
-Copyright (c) 2026 huarangmeng
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+MIT License · Copyright (c) 2026 huarangmeng
 ```
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

@@ -499,14 +499,12 @@ class IncrementalEngine(
                 block
             }
             is ListBlock, is ListItem, is CustomContainer -> {
-                if (block is ContainerNode) {
-                    val children = block.children.toList()
-                    if (children.isNotEmpty()) {
-                        val lastChild = children.last()
-                        val repaired = autoCloseBlock(lastChild, source)
-                        if (repaired !== lastChild) {
-                            block.replaceChild(lastChild, repaired)
-                        }
+                val children = block.children.toList()
+                if (children.isNotEmpty()) {
+                    val lastChild = children.last()
+                    val repaired = autoCloseBlock(lastChild, source)
+                    if (repaired !== lastChild) {
+                        block.replaceChild(lastChild, repaired)
                     }
                 }
                 block

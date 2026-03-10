@@ -2,7 +2,6 @@ package com.hrm.markdown
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
@@ -19,7 +18,7 @@ fun App() {
 
     MaterialTheme(colorScheme = colorScheme) {
         Surface(
-            modifier = Modifier.fillMaxSize().safeContentPadding(),
+            modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
             MarkdownPreview()

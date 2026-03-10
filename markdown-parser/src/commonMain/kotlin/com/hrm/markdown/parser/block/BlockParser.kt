@@ -216,7 +216,7 @@ class BlockParser(
                     for (i in openBlocks.indices.reversed()) {
                         val ob = openBlocks[i]
                         if (ob.node is ListItem) {
-                            val li = ob.node as ListItem
+                            val li = ob.node
                             if (li.children.isNotEmpty() || ob.paragraphContent != null) {
                                 ob.blankLineAfterContent = true
                             }

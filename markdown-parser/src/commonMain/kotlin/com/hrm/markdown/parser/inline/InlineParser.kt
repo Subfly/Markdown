@@ -848,10 +848,8 @@ private class InlineParserInstance(
 
         // 尝试 ASCII 表情匹配（如 :) :D 等）
         if (enableAsciiEmoticons) {
-            val asciiResult = tryMatchAsciiEmoticon(pos)
-            if (asciiResult != null) {
-                return
-            }
+            tryMatchAsciiEmoticon(pos)
+            return
         }
 
         if (scanner.isAtEnd || !(scanner.peek().isLetterOrDigit() || scanner.peek() == '_' || scanner.peek() == '+' || scanner.peek() == '-')) {
