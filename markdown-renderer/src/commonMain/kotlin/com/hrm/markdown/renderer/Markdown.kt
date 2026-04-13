@@ -118,6 +118,52 @@ fun Markdown(
 }
 
 /**
+ * Markdown 渲染器的顶层 Composable 入口，支持传入自定义 AST，供需要高度定制的场景使用。
+ *
+ * @param document Markdown AST
+ * @param isStreaming 是否处于流式生成中。为 true 时启用增量解析，避免全量重解析导致的闪烁
+ * @param theme 可选的自定义主题，默认跟随系统日夜间模式
+ * @param config 解析配置，控制 Markdown 方言（Flavour）和解析行为，默认使用 [MarkdownConfig.Default]（ExtendedFlavour 全功能）
+ * @param scrollState 滚动状态，外部可控制滚动位置
+ * @param retainStateOnChange 当 markdown 变化时是否保留旧内容直到新内容解析完成（避免闪烁）
+ * @param enablePagination 是否启用分页加载，适合超长文档（> 500 段落）
+ * @param initialBlockCount 分页模式下初始渲染的块数量
+ * @param imageContent 自定义图片渲染组件，null 则使用默认占位渲染
+ * @param onLinkClick 链接点击回调
+ */
+@Composable
+fun Markdown(
+    document: Document,
+    modifier: Modifier = Modifier,
+    theme: MarkdownTheme = MarkdownTheme.auto(),
+    codeTheme: CodeTheme? = null,
+    config: MarkdownConfig = MarkdownConfig.Default,
+    scrollState: ScrollState = rememberScrollState(),
+    isStreaming: Boolean = false,
+    retainStateOnChange: Boolean = false,
+    enablePagination: Boolean = false,
+    enableScroll: Boolean = true,
+    initialBlockCount: Int = 100,
+    imageContent: MarkdownImageRenderer? = null,
+    onLinkClick: ((String) -> Unit)? = null,
+) {
+    InnerMarkdown(
+        document = document,
+        modifier = modifier,
+        theme = theme,
+        codeTheme = codeTheme,
+        config = config,
+        scrollState = scrollState,
+        isStreaming = isStreaming,
+        enablePagination = enablePagination,
+        enableScroll = enableScroll,
+        initialBlockCount = initialBlockCount,
+        imageContent = imageContent,
+        onLinkClick = onLinkClick,
+    )
+}
+
+/**
  * 流式文档解析状态。
  * - 流式模式：增量追加解析，避免闪烁
  * - 非流式模式：全量异步解析
