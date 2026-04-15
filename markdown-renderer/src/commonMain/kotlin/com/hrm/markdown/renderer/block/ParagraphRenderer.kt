@@ -16,6 +16,7 @@ import com.hrm.markdown.renderer.DefaultMarkdownImage
 import com.hrm.markdown.renderer.LocalCodeHighlightTheme
 import com.hrm.markdown.renderer.LocalImageRenderer
 import com.hrm.markdown.renderer.LocalMarkdownTheme
+import com.hrm.markdown.renderer.LocalOnFootnoteClick
 import com.hrm.markdown.renderer.LocalOnLinkClick
 import com.hrm.markdown.renderer.MarkdownImageData
 import com.hrm.latex.renderer.measure.rememberLatexMeasurer
@@ -93,6 +94,7 @@ private fun MixedParagraphRenderer(
 ) {
     val theme = LocalMarkdownTheme.current
     val onLinkClick = LocalOnLinkClick.current
+    val onFootnoteClick = LocalOnFootnoteClick.current
     val customRenderer = LocalImageRenderer.current
     val latexMeasurer = rememberLatexMeasurer()
     val density = androidx.compose.ui.platform.LocalDensity.current
@@ -113,6 +115,7 @@ private fun MixedParagraphRenderer(
                         hostTextStyle = theme.bodyStyle,
                         inlineContents = inlineContents,
                         onLinkClick = onLinkClick,
+                        onFootnoteClick = onFootnoteClick,
                         latexMeasurer = latexMeasurer,
                         density = density,
                         textMeasurer = textMeasurer,

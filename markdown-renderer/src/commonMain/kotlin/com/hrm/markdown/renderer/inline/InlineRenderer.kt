@@ -1,9 +1,12 @@
 package com.hrm.markdown.renderer.inline
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,7 +42,9 @@ import com.hrm.latex.renderer.measure.rememberLatexMeasurer
 import com.hrm.latex.renderer.model.LatexConfig
 import com.hrm.markdown.parser.ast.*
 import com.hrm.markdown.renderer.LocalCodeHighlightTheme
+import com.hrm.markdown.renderer.LocalFootnoteNavigationState
 import com.hrm.markdown.renderer.LocalMarkdownTheme
+import com.hrm.markdown.renderer.LocalOnFootnoteClick
 import com.hrm.markdown.renderer.MarkdownTheme
 
 internal const val INLINE_PLACEHOLDER_TAG = "markdown-inline-placeholder"
@@ -66,11 +71,12 @@ internal fun rememberInlineContent(
     hostTextStyle: TextStyle = LocalMarkdownTheme.current.bodyStyle,
 ): InlineContentResult {
     val theme = LocalMarkdownTheme.current
+    val onFootnoteClick = LocalOnFootnoteClick.current
     val latexMeasurer = rememberLatexMeasurer()
     val density = LocalDensity.current
     val textMeasurer = rememberTextMeasurer()
     val inlineCodeTheme = LocalCodeHighlightTheme.current ?: LocalCodeTheme.current
-    return remember(parent, theme, onLinkClick, hostTextStyle, latexMeasurer, density, textMeasurer, inlineCodeTheme) {
+    return remember(parent, theme, onLinkClick, onFootnoteClick, hostTextStyle, latexMeasurer, density, textMeasurer, inlineCodeTheme) {
         val inlineContents = mutableMapOf<String, InlineContentEntry>()
         val annotated = buildAnnotatedString {
             renderInlineChildren(
@@ -79,6 +85,7 @@ internal fun rememberInlineContent(
                 hostTextStyle,
                 inlineContents,
                 onLinkClick,
+                onFootnoteClick,
                 latexMeasurer,
                 density,
                 textMeasurer,
@@ -112,6 +119,7 @@ internal fun buildInlineAnnotatedString(
     hostTextStyle: TextStyle,
     inlineContents: MutableMap<String, InlineContentEntry>,
     onLinkClick: ((String) -> Unit)? = null,
+    onFootnoteClick: ((String) -> Unit)? = null,
     latexMeasurer: LatexMeasurerState? = null,
     density: Density? = null,
     textMeasurer: androidx.compose.ui.text.TextMeasurer? = null,
@@ -123,6 +131,7 @@ internal fun buildInlineAnnotatedString(
             hostTextStyle,
             inlineContents,
             onLinkClick,
+            onFootnoteClick,
             latexMeasurer,
             density,
             textMeasurer,
@@ -136,13 +145,14 @@ private fun AnnotatedString.Builder.renderInlineChildren(
     hostTextStyle: TextStyle,
     inlineContents: MutableMap<String, InlineContentEntry>,
     onLinkClick: ((String) -> Unit)?,
+    onFootnoteClick: ((String) -> Unit)?,
     latexMeasurer: LatexMeasurerState? = null,
     density: Density? = null,
     textMeasurer: androidx.compose.ui.text.TextMeasurer? = null,
     inlineCodeTheme: com.hrm.codehigh.theme.CodeTheme? = null,
 ) {
     for (node in nodes) {
-        renderInlineNode(node, theme, hostTextStyle, inlineContents, onLinkClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
+        renderInlineNode(node, theme, hostTextStyle, inlineContents, onLinkClick, onFootnoteClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
     }
 }
 
@@ -152,6 +162,7 @@ private fun AnnotatedString.Builder.renderInlineNode(
     hostTextStyle: TextStyle,
     inlineContents: MutableMap<String, InlineContentEntry>,
     onLinkClick: ((String) -> Unit)?,
+    onFootnoteClick: ((String) -> Unit)?,
     latexMeasurer: LatexMeasurerState? = null,
     density: Density? = null,
     textMeasurer: androidx.compose.ui.text.TextMeasurer? = null,
@@ -166,19 +177,19 @@ private fun AnnotatedString.Builder.renderInlineNode(
 
         is Emphasis -> {
             withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
-                renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
+                renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, onFootnoteClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
             }
         }
 
         is StrongEmphasis -> {
             withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
+                renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, onFootnoteClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
             }
         }
 
         is Strikethrough -> {
             withStyle(theme.strikethroughStyle) {
-                renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
+                renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, onFootnoteClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
             }
         }
 
@@ -230,7 +241,7 @@ private fun AnnotatedString.Builder.renderInlineNode(
                 },
             )
             withLink(linkAnnotation) {
-                renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
+                renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, onFootnoteClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
             }
         }
 
@@ -306,21 +317,51 @@ private fun AnnotatedString.Builder.renderInlineNode(
         }
 
         is FootnoteReference -> {
-            val linkAnnotation = LinkAnnotation.Clickable(
-                tag = "footnote",
-                styles = TextLinkStyles(
-                    style = SpanStyle(
-                        color = theme.linkColor,
-                        fontSize = theme.footnoteStyle.fontSize,
-                        baselineShift = BaselineShift.Superscript,
+            val referenceText = "[${node.index}]"
+            if (density != null && textMeasurer != null) {
+                val referenceStyle = hostTextStyle.copy(
+                    color = theme.linkColor,
+                    fontSize = theme.footnoteStyle.fontSize,
+                )
+                val size = textMeasurer.measure(referenceText, style = referenceStyle).size
+                val id = "footnote_ref_${node.hashCode()}"
+                appendInlinePlaceholder(id)
+                val itc = InlineTextContent(
+                    placeholder = Placeholder(
+                        width = with(density) { size.width.toSp() },
+                        height = hostTextStyle.lineHeight,
+                        placeholderVerticalAlign = PlaceholderVerticalAlign.TextTop,
                     ),
-                ),
-                linkInteractionListener = {
-                    // 脚注点击暂不处理，可扩展
-                },
-            )
-            withLink(linkAnnotation) {
-                append("[${node.index}]")
+                ) {
+                    FootnoteReferenceContent(
+                        label = node.label,
+                        text = referenceText,
+                        hostTextStyle = hostTextStyle,
+                        theme = theme,
+                        onFootnoteClick = onFootnoteClick,
+                    )
+                }
+                inlineContents[id] = InlineContentEntry(
+                    alternateText = referenceText,
+                    inlineTextContent = itc,
+                )
+            } else {
+                val linkAnnotation = LinkAnnotation.Clickable(
+                    tag = "footnote",
+                    styles = TextLinkStyles(
+                        style = SpanStyle(
+                            color = theme.linkColor,
+                            fontSize = theme.footnoteStyle.fontSize,
+                            baselineShift = BaselineShift.Superscript,
+                        ),
+                    ),
+                    linkInteractionListener = {
+                        onFootnoteClick?.invoke(node.label)
+                    },
+                )
+                withLink(linkAnnotation) {
+                    append(referenceText)
+                }
             }
         }
 
@@ -370,7 +411,7 @@ private fun AnnotatedString.Builder.renderInlineNode(
 
         is Highlight -> {
             withStyle(SpanStyle(background = theme.highlightColor)) {
-                renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
+                renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, onFootnoteClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
             }
         }
 
@@ -380,7 +421,7 @@ private fun AnnotatedString.Builder.renderInlineNode(
                     SpanStyle(baselineShift = BaselineShift.Superscript)
                 )
             ) {
-                renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
+                renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, onFootnoteClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
             }
         }
 
@@ -390,13 +431,13 @@ private fun AnnotatedString.Builder.renderInlineNode(
                     SpanStyle(baselineShift = BaselineShift.Subscript)
                 )
             ) {
-                renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
+                renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, onFootnoteClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
             }
         }
 
         is InsertedText -> {
             withStyle(theme.insertedTextStyle) {
-                renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
+                renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, onFootnoteClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
             }
         }
 
@@ -416,10 +457,10 @@ private fun AnnotatedString.Builder.renderInlineNode(
             }
             if (spanStyle != null) {
                 withStyle(spanStyle) {
-                    renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
+                    renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, onFootnoteClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
                 }
             } else {
-                renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
+                renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, onFootnoteClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
             }
         }
 
@@ -490,6 +531,7 @@ private fun AnnotatedString.Builder.renderInlineNode(
                     hostTextStyle = hostTextStyle,
                     inlineContents = inlineContents,
                     onLinkClick = onLinkClick,
+                    onFootnoteClick = onFootnoteClick,
                     latexMeasurer = latexMeasurer,
                     density = density,
                     textMeasurer = textMeasurer,
@@ -570,10 +612,47 @@ private fun AnnotatedString.Builder.renderInlineNode(
 
         else -> {
             if (node is ContainerNode) {
-                renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
+                renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, onFootnoteClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
             }
         }
     }
+}
+
+@Composable
+private fun FootnoteReferenceContent(
+    label: String,
+    text: String,
+    hostTextStyle: TextStyle,
+    theme: MarkdownTheme,
+    onFootnoteClick: ((String) -> Unit)?,
+) {
+    val footnoteNavigationState = LocalFootnoteNavigationState.current
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+
+    DisposableEffect(footnoteNavigationState, label, bringIntoViewRequester) {
+        footnoteNavigationState?.registerReference(label, bringIntoViewRequester)
+        onDispose {
+            footnoteNavigationState?.unregisterReference(label, bringIntoViewRequester)
+        }
+    }
+
+    BasicText(
+        text = buildAnnotatedString {
+            withStyle(
+                SpanStyle(
+                    color = theme.linkColor,
+                    fontSize = theme.footnoteStyle.fontSize,
+                    baselineShift = BaselineShift.Superscript,
+                )
+            ) {
+                append(text)
+            }
+        },
+        modifier = Modifier
+            .bringIntoViewRequester(bringIntoViewRequester)
+            .clickable { onFootnoteClick?.invoke(label) },
+        style = hostTextStyle,
+    )
 }
 
 /**
@@ -728,6 +807,7 @@ private fun SpoilerContent(
     hostTextStyle: TextStyle,
     inlineContents: MutableMap<String, InlineContentEntry>,
     onLinkClick: ((String) -> Unit)?,
+    onFootnoteClick: ((String) -> Unit)?,
     latexMeasurer: LatexMeasurerState?,
     density: Density?,
     textMeasurer: androidx.compose.ui.text.TextMeasurer?,
@@ -740,14 +820,14 @@ private fun SpoilerContent(
                 withStyle(SpanStyle(
                     background = theme.spoilerColor,
                 )) {
-                    renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
+                    renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, onFootnoteClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
                 }
             } else {
                 withStyle(SpanStyle(
                     background = theme.spoilerColor,
                     color = theme.spoilerColor,
                 )) {
-                    renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
+                    renderInlineChildren(node.children, theme, hostTextStyle, inlineContents, onLinkClick, onFootnoteClick, latexMeasurer, density, textMeasurer, inlineCodeTheme)
                 }
             }
         }
