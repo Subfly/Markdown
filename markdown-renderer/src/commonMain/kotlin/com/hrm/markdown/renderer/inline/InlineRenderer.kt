@@ -30,6 +30,7 @@ import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.sp
+import kotlin.math.ceil
 import com.hrm.codehigh.renderer.InlineCodeDefaults
 import com.hrm.codehigh.renderer.InlineCode as CodeHighInlineCode
 import com.hrm.codehigh.renderer.measureInlineCodeSize
@@ -210,7 +211,7 @@ private fun AnnotatedString.Builder.renderInlineNode(
                 appendInlinePlaceholder(id)
                 val itc = InlineTextContent(
                     placeholder = Placeholder(
-                        width = with(density) { size.width.toSp() },
+                        width = with(density) { ceil(size.width).toSp() },
                         height = with(density) { size.height.toSp() },
                         placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter,
                     ),
