@@ -5,6 +5,35 @@ import com.hrm.markdown.renderer.Markdown
 
 internal val codeBlockPreviewGroups = listOf(
     PreviewGroup(
+        id = "inline_code",
+        title = "行内代码",
+        description = "覆盖 inline code 尾字符裁剪与紧贴边界场景",
+        items = listOf(
+            PreviewItem(
+                id = "inline_code_tail_clipping",
+                title = "尾字符裁剪回归",
+                content = {
+                    Markdown(
+                        markdown = """
+行内代码尾部不应被裁掉：
+
+- short: `code`
+- keyword: `value`
+- end backtick: `inline`
+- mixed: `renderInlineNode`
+- snake_case: `inline_code_tail`
+- kebab-case: `inline-code-tail`
+- digits: `value123`
+- punctuation: `size.width`
+- dense sentence: The final word in `composeInlineCode` should remain fully visible.
+- repeated samples: `tail` `clip` `width` `guard` `ceil`
+                        """.trimIndent()
+                    )
+                }
+            ),
+        )
+    ),
+    PreviewGroup(
         id = "kotlin_code",
         title = "Kotlin 代码",
         description = "Kotlin 语法高亮",
