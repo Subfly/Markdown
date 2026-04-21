@@ -180,12 +180,12 @@ class IncrementalEngine(
                 SourceText.applyEditFast(oldSource, edit.offset, 0, ins)
             }
             is EditOperation.Delete -> {
-                fullText.delete(edit.offset, edit.offset + edit.length)
+                fullText.deleteRange(edit.offset, edit.offset + edit.length)
                 SourceText.applyEditFast(oldSource, edit.offset, edit.length, "")
             }
             is EditOperation.Replace -> {
                 val ins = SourceText.normalize(edit.newText)
-                fullText.replace(edit.offset, edit.offset + edit.length, ins)
+                fullText.replaceRange(edit.offset, edit.offset + edit.length, ins)
                 SourceText.applyEditFast(oldSource, edit.offset, edit.length, ins)
             }
             is EditOperation.Append -> {
