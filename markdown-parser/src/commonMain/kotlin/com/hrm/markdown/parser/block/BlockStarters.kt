@@ -640,7 +640,7 @@ internal class BlockStarters(
         }
 
         // 剩余部分是类型名
-        type = remaining.trim().split("\\s+".toRegex()).firstOrNull() ?: ""
+        type = remaining.trim().split(INFO_LANG_SPLIT_REGEX).firstOrNull() ?: ""
 
         return ContainerInfo(type, title, cssClasses, cssId)
     }

@@ -2159,16 +2159,18 @@ object HtmlEntities {
         "zwnj" to "\u200C"
     )
 
-    private val namedEntities: Map<String, String> = buildMap(2125) {
-        putAll(entities0())
-        putAll(entities1())
-        putAll(entities2())
-        putAll(entities3())
-        putAll(entities4())
-        putAll(entities5())
-        putAll(entities6())
-        putAll(entities7())
-        putAll(entities8())
+    private val namedEntities: Map<String, String> by lazy {
+        buildMap(2125) {
+            putAll(entities0())
+            putAll(entities1())
+            putAll(entities2())
+            putAll(entities3())
+            putAll(entities4())
+            putAll(entities5())
+            putAll(entities6())
+            putAll(entities7())
+            putAll(entities8())
+        }
     }
 
     private val entityRegex = Regex("&(#[xX][0-9a-fA-F]+|#[0-9]+|[a-zA-Z][a-zA-Z0-9]*);")

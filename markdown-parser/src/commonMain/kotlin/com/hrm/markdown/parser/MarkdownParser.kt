@@ -87,7 +87,13 @@ class MarkdownParser(
         flavour, customEmojiMap, enableAsciiEmoticons, lintingProcessor,
         appendCoalesceThreshold = appendCoalesceThreshold,
     )
-    private val editEngine = IncrementalEngine(flavour, customEmojiMap, enableAsciiEmoticons, lintingProcessor = lintingProcessor)
+    /**
+     * Edit engine 仅在编辑 API（applyEdit / replace 等）首次被调用时才构造。
+     * 大多数 LLM 流式场景不会触碰编辑路径，可省去一次 IncrementalEngine + FlavourCache 构造。
+     */
+    private val editEngine: IncrementalEngine by lazy {
+        IncrementalEngine(flavour, customEmojiMap, enableAsciiEmoticons, lintingProcessor = lintingProcessor)
+    }
 
     /**
      * 语法验证诊断结果。

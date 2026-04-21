@@ -55,3 +55,10 @@ tasks.register<JavaExec>("mainThreadJankBenchmark") {
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("com.hrm.markdown.benchmark.MainThreadJankBenchmarkKt")
 }
+
+tasks.register<JavaExec>("coldStartBenchmark") {
+    group = "benchmark"
+    description = "Measures cold-start cost of HtmlEntities init, MarkdownParser construction, and first parse. Use --args='--isolate <stage>' for reliable numbers."
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.hrm.markdown.benchmark.ColdStartBenchmarkKt")
+}
