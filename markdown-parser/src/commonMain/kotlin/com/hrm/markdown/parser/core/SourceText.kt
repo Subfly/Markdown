@@ -105,9 +105,89 @@ class SourceText private constructor(
          * 规范化行尾符并替换 NUL 字符。
          */
         fun of(input: String): SourceText {
-            // 规范化行尾符：\r\n -> \n，\r -> \n
-            // 替换 NUL（U+0000）为 U+FFFD
-            val normalized = buildString(input.length) {
+            val normalized = normalize(input)
+            return SourceText(normalized, computeLineOffsets(normalized))
+        }
+
+        /**
+         * 对当前源文本应用编辑操作，返回新的 SourceText。
+         * 这是一个便捷方法，内部通过修改文本内容后重新创建 SourceText。
+         */
+        fun applyEdit(
+            current: SourceText,
+            offset: Int,
+            deleteLength: Int,
+            insertText: String
+        ): SourceText = applyEditFast(current, offset, deleteLength, insertText)
+
+        /**
+         * 增量应用编辑：仅对插入文本做规范化，并在保留旧 lineOffsets 的基础上局部更新行偏移，
+         * 避免每次编辑都对完整文本重扫一遍换行符。
+         *
+         * 适合 [com.hrm.markdown.parser.incremental.IncrementalEngine.applyEdit] 这类高频调用路径。
+         */
+        fun applyEditFast(
+            current: SourceText,
+            offset: Int,
+            deleteLength: Int,
+            insertText: String
+        ): SourceText {
+            val oldContent = current.content
+            require(offset in 0..oldContent.length) { "offset $offset out of [0, ${oldContent.length}]" }
+            require(deleteLength >= 0 && offset + deleteLength <= oldContent.length) {
+                "delete range [$offset, ${offset + deleteLength}) out of [0, ${oldContent.length}]"
+            }
+
+            val normalizedInsert = if (insertText.isEmpty()) "" else normalize(insertText)
+            val newContent = buildString(oldContent.length - deleteLength + normalizedInsert.length) {
+                append(oldContent, 0, offset)
+                append(normalizedInsert)
+                append(oldContent, offset + deleteLength, oldContent.length)
+            }
+
+            val oldOffsets = current.lineOffsets
+            // 保留行 0..firstAffected（这些行的起始 ≤ offset，新内容下仍然有效）。
+            val firstAffectedLine = current.lineAtOffset(offset)
+            val keepHead = firstAffectedLine + 1
+
+            // 编辑区域结束所在的旧行；其后的行需要平移 delta 后保留。
+            val deleteEnd = offset + deleteLength
+            val lineAfterDelete = current.lineAtOffset(deleteEnd) + 1
+            val tailCount = oldOffsets.size - lineAfterDelete
+
+            // 统计新增换行符数量。
+            var insertedNewlines = 0
+            for (i in normalizedInsert.indices) {
+                if (normalizedInsert[i] == '\n') insertedNewlines++
+            }
+
+            val newSize = keepHead + insertedNewlines + tailCount
+            val newOffsets = IntArray(newSize)
+            for (i in 0 until keepHead) newOffsets[i] = oldOffsets[i]
+            var idx = keepHead
+            for (i in normalizedInsert.indices) {
+                if (normalizedInsert[i] == '\n') {
+                    newOffsets[idx++] = offset + i + 1
+                }
+            }
+            val delta = normalizedInsert.length - deleteLength
+            for (i in 0 until tailCount) {
+                newOffsets[idx++] = oldOffsets[lineAfterDelete + i] + delta
+            }
+
+            return SourceText(newContent, newOffsets)
+        }
+
+        internal fun normalize(input: String): String {
+            // 行尾符：\r\n -> \n，\r -> \n；NUL（U+0000）-> U+FFFD。
+            // 仅当输入需要规范化时才走 buildString 拷贝路径。
+            var needs = false
+            for (i in input.indices) {
+                val c = input[i]
+                if (c == '\r' || c == '\u0000') { needs = true; break }
+            }
+            if (!needs) return input
+            return buildString(input.length) {
                 var i = 0
                 while (i < input.length) {
                     val c = input[i]
@@ -122,41 +202,22 @@ class SourceText private constructor(
                     i++
                 }
             }
-
-            // 构建行偏移索引
-            val offsets = mutableListOf(0)
-            for (i in normalized.indices) {
-                if (normalized[i] == '\n' && i + 1 <= normalized.length) {
-                    offsets.add(i + 1)
-                }
-            }
-
-            return SourceText(normalized, offsets.toIntArray())
         }
 
-        /**
-         * 对当前源文本应用编辑操作，返回新的 SourceText。
-         * 这是一个便捷方法，内部通过修改文本内容后重新创建 SourceText。
-         *
-         * @param current 当前源文本
-         * @param offset 编辑起始偏移量
-         * @param deleteLength 要删除的字符数
-         * @param insertText 要插入的文本
-         * @return 新的 SourceText
-         */
-        fun applyEdit(
-            current: SourceText,
-            offset: Int,
-            deleteLength: Int,
-            insertText: String
-        ): SourceText {
-            val oldContent = current.content
-            val newContent = buildString(oldContent.length - deleteLength + insertText.length) {
-                append(oldContent, 0, offset)
-                append(insertText)
-                append(oldContent, offset + deleteLength, oldContent.length)
+        private fun computeLineOffsets(normalized: String): IntArray {
+            val estimatedLines = (normalized.length / 40).coerceAtLeast(16)
+            var offsets = IntArray(estimatedLines)
+            offsets[0] = 0
+            var lineCount = 1
+            for (i in normalized.indices) {
+                if (normalized[i] == '\n') {
+                    if (lineCount >= offsets.size) {
+                        offsets = offsets.copyOf(offsets.size * 2)
+                    }
+                    offsets[lineCount++] = i + 1
+                }
             }
-            return of(newContent)
+            return if (lineCount == offsets.size) offsets else offsets.copyOf(lineCount)
         }
     }
 }

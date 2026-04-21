@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
@@ -180,25 +181,15 @@ internal fun TocPlaceholderRenderer(
     val theme = LocalMarkdownTheme.current
     val document = LocalRendererDocument.current
 
-    // 收集所有标题
-    var headings = collectHeadings(document)
-    if (headings.isEmpty()) return
-
-    // 按深度范围过滤
-    headings = headings.filter { it.level in node.minDepth..node.maxDepth }
-
-    // 按排除 ID 过滤
-    if (node.excludeIds.isNotEmpty()) {
-        headings = headings.filter { heading ->
-            heading.id == null || heading.id !in node.excludeIds
+    // 收集 + 过滤 + 排序结果，避免每次重组都全量遍历 AST
+    val headings = remember(document, node.minDepth, node.maxDepth, node.excludeIds, node.order) {
+        var list = collectHeadings(document).filter { it.level in node.minDepth..node.maxDepth }
+        if (node.excludeIds.isNotEmpty()) {
+            list = list.filter { it.id == null || it.id !in node.excludeIds }
         }
+        if (node.order == "desc") list = list.reversed()
+        list
     }
-
-    // 按排序方式排序
-    if (node.order == "desc") {
-        headings = headings.reversed()
-    }
-
     if (headings.isEmpty()) return
 
     Column(

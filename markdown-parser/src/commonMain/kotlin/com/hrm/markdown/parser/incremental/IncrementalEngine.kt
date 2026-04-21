@@ -84,7 +84,7 @@ class IncrementalEngine(
     fun fullParse(input: String): Document {
         HLog.d(TAG) { "fullParse input=${input.length} chars" }
         fullText.clear()
-        fullText.append(input)
+        fullText.append(SourceText.normalize(input))
         _isStreaming = false
         stableBlockCount = 0
         stableEndLine = 0
@@ -107,7 +107,7 @@ class IncrementalEngine(
 
     fun append(chunk: String): Document {
         if (chunk.isEmpty()) return _document
-        fullText.append(chunk)
+        fullText.append(SourceText.normalize(chunk))
         return doIncrementalAppend()
     }
 
@@ -138,37 +138,28 @@ class IncrementalEngine(
         val oldSource = _sourceText
         val oldText = fullText.toString()
 
-        // 应用编辑到文本
-        when (edit) {
+        // 应用编辑到文本（统一规范化插入文本，使 fullText 与 _sourceText.content 始终一致）
+        val newSource: SourceText = when (edit) {
             is EditOperation.Insert -> {
-                val current = fullText.toString()
-                fullText.clear()
-                fullText.append(current.substring(0, edit.offset))
-                fullText.append(edit.text)
-                fullText.append(current.substring(edit.offset))
+                val ins = SourceText.normalize(edit.text)
+                fullText.insert(edit.offset, ins)
+                SourceText.applyEditFast(oldSource, edit.offset, 0, ins)
             }
             is EditOperation.Delete -> {
-                val current = fullText.toString()
-                fullText.clear()
-                fullText.append(current.substring(0, edit.offset))
-                fullText.append(current.substring(edit.offset + edit.length))
+                fullText.delete(edit.offset, edit.offset + edit.length)
+                SourceText.applyEditFast(oldSource, edit.offset, edit.length, "")
             }
             is EditOperation.Replace -> {
-                val current = fullText.toString()
-                fullText.clear()
-                fullText.append(current.substring(0, edit.offset))
-                fullText.append(edit.newText)
-                fullText.append(current.substring(edit.offset + edit.length))
+                val ins = SourceText.normalize(edit.newText)
+                fullText.replace(edit.offset, edit.offset + edit.length, ins)
+                SourceText.applyEditFast(oldSource, edit.offset, edit.length, ins)
             }
             is EditOperation.Append -> {
-                fullText.append(edit.text)
+                fullText.append(SourceText.normalize(edit.text))
                 // 对于 Append，委托给流式增量逻辑
                 return doIncrementalAppend()
             }
         }
-
-        val newText = fullText.toString()
-        val newSource = SourceText.of(newText)
         _sourceText = newSource
 
         if (newSource.lineCount == 0) {
@@ -243,7 +234,7 @@ class IncrementalEngine(
         lintingProcessor?.let { newDoc.diagnostics = it.result }
 
         _document = newDoc
-        lastParsedLength = newText.length
+        lastParsedLength = newSource.length
         return _document
     }
 
@@ -351,7 +342,8 @@ class IncrementalEngine(
             newDoc.appendChild(block)
         }
 
-        for (block in displayBlocks) {
+        val reusedDisplayBlocks = reuseFencedCodeBlockInstances(displayBlocks, oldChildren)
+        for (block in reusedDisplayBlocks) {
             newDoc.appendChild(block)
         }
 

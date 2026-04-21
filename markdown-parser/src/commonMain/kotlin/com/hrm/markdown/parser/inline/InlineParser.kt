@@ -237,6 +237,9 @@ private class InlineParserInstance(
     private var llHead: LLNode? = null
     private var llTail: LLNode? = null
 
+    // 复用的文本缓冲，避免每次 appendText() 分配 StringBuilder
+    private val textBuffer = StringBuilder(64)
+
     // 分隔符栈（双向链表）
     private var delimHead: DelimEntry? = null
     private var delimTail: DelimEntry? = null
@@ -395,7 +398,7 @@ private class InlineParserInstance(
                     var content = input.substring(startContent, closeStart)
                     content = content.replace('\n', ' ')
                     if (content.length >= 2 && content[0] == ' ' && content.last() == ' ' && !content.all { it == ' ' }) {
-                        content = content.drop(1).dropLast(1)
+                        content = content.substring(1, content.length - 1)
                     }
                     appendLL(InlineCode(content))
                     return
@@ -1026,7 +1029,8 @@ private class InlineParserInstance(
     }
 
     private fun appendText() {
-        val sb = StringBuilder()
+        val sb = textBuffer
+        sb.clear()
         while (!scanner.isAtEnd) {
             val c = scanner.peek()
             if (c == '\\' || c == '`' || c == '<' || c == '&' || c == '[' || c == ']' ||
@@ -1070,9 +1074,8 @@ private class InlineParserInstance(
 
             // GFM bare URL autolink detection
             if (enableGfmAutolinks && (c == 'h' || c == 'H' || c == 'w' || c == 'W')) {
-                val remaining = input.substring(scanner.pos)
-                val urlMatch = InlineParser.GFM_URL_REGEX.find(remaining)
-                if (urlMatch != null && urlMatch.range.first == 0) {
+                val urlMatch = InlineParser.GFM_URL_REGEX.find(input, scanner.pos)
+                if (urlMatch != null && urlMatch.range.first == scanner.pos) {
                     // 先输出已收集的文本
                     if (sb.isNotEmpty()) {
                         appendLL(Text(sb.toString()))

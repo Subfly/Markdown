@@ -110,20 +110,27 @@ private fun MixedParagraphRenderer(
         for (segment in segments) {
             when (segment) {
                 is ParagraphSegment.TextRun -> {
-                    val inlineContents = mutableMapOf<String, InlineContentEntry>()
-                    val annotated = buildInlineAnnotatedString(
-                        nodes = segment.nodes,
-                        theme = theme,
-                        hostTextStyle = theme.bodyStyle,
-                        inlineContents = inlineContents,
-                        directiveRegistry = directiveRegistry,
-                        onLinkClick = onLinkClick,
-                        onFootnoteClick = onFootnoteClick,
-                        latexMeasurer = latexMeasurer,
-                        density = density,
-                        textMeasurer = textMeasurer,
-                        codeTheme = codeTheme,
-                    )
+                    val built = remember(
+                        segment, theme, onLinkClick, onFootnoteClick, directiveRegistry,
+                        latexMeasurer, density, textMeasurer, codeTheme,
+                    ) {
+                        val inlineContents = mutableMapOf<String, InlineContentEntry>()
+                        val annotated = buildInlineAnnotatedString(
+                            nodes = segment.nodes,
+                            theme = theme,
+                            hostTextStyle = theme.bodyStyle,
+                            inlineContents = inlineContents,
+                            directiveRegistry = directiveRegistry,
+                            onLinkClick = onLinkClick,
+                            onFootnoteClick = onFootnoteClick,
+                            latexMeasurer = latexMeasurer,
+                            density = density,
+                            textMeasurer = textMeasurer,
+                            codeTheme = codeTheme,
+                        )
+                        annotated to inlineContents
+                    }
+                    val (annotated, inlineContents) = built
                     if (annotated.isNotEmpty()) {
                         InlineFlowText(
                             annotated = annotated,

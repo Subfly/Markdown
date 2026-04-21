@@ -1380,30 +1380,44 @@ class BlockParser(
                 if (node.rawContent != null) {
                     return node.rawContent!!
                 }
-                val lines = (lr.startLine until lr.endLine - 1).map {
-                    source.lineContent(it).trimStart().trimEnd()
+                buildString {
+                    for (i in lr.startLine until lr.endLine - 1) {
+                        if (i > lr.startLine) append('\n')
+                        append(source.lineContent(i).trimStart().trimEnd())
+                    }
                 }
-                lines.joinToString("\n")
             }
             is Paragraph -> {
                 // 优先使用解析阶段已捕获的内容（已去除块级标记如列表标记）
                 if (node.rawContent != null) {
                     return node.rawContent!!
                 }
-                val lines = (lr.startLine until lr.endLine).map { source.lineContent(it).trimStart() }
-                lines.joinToString("\n")
+                buildString {
+                    for (i in lr.startLine until lr.endLine) {
+                        if (i > lr.startLine) append('\n')
+                        append(source.lineContent(i).trimStart())
+                    }
+                }
             }
             is TableCell -> {
                 // 使用解析时存储的单元格内容，而非从源文本行读取
                 node.rawContent
             }
             is DefinitionTerm -> {
-                val lines = (lr.startLine until lr.endLine).map { source.lineContent(it).trimStart() }
-                lines.joinToString("\n")
+                buildString {
+                    for (i in lr.startLine until lr.endLine) {
+                        if (i > lr.startLine) append('\n')
+                        append(source.lineContent(i).trimStart())
+                    }
+                }
             }
             else -> {
-                val lines = (lr.startLine until lr.endLine).map { source.lineContent(it) }
-                lines.joinToString("\n")
+                buildString {
+                    for (i in lr.startLine until lr.endLine) {
+                        if (i > lr.startLine) append('\n')
+                        append(source.lineContent(i))
+                    }
+                }
             }
         }
     }

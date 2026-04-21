@@ -10,6 +10,8 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import kotlin.math.ceil
 
+private val WHITESPACE_BOUNDARY_REGEX = Regex("(?<=\\s)|(?=\\s)")
+
 internal fun computeInlineFlowLayout(
     annotated: AnnotatedString,
     inlineContents: Map<String, InlineContentEntry>,
@@ -348,7 +350,7 @@ internal fun computeMinIntrinsicWidthPx(
             }
 
             is Token.Text -> {
-                val pieces = token.annotated.text.split(Regex("(?<=\\\\s)|(?=\\\\s)"))
+                val pieces = token.annotated.text.split(WHITESPACE_BOUNDARY_REGEX)
                 var cursor = 0
                 for (piece in pieces) {
                     if (piece.isEmpty()) continue

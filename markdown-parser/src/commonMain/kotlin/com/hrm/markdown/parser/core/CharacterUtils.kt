@@ -6,6 +6,8 @@ package com.hrm.markdown.parser.core
  */
 object CharacterUtils {
 
+    private val WHITESPACE_REGEX = Regex("\\s+")
+
     /** 可用反斜杠转义的 ASCII 标点字符。 */
     const val ESCAPABLE_CHARS = "\\`*_{}[]()#+-.!|~<>\"'/^=:;&@"
 
@@ -96,7 +98,7 @@ object CharacterUtils {
      * ẞ (U+1E9E) -> "ss" and ß (U+00DF) -> "ss".
      */
     fun normalizeLinkLabel(label: String): String {
-        return unicodeCaseFold(label.trim().replace(Regex("\\s+"), " "))
+        return unicodeCaseFold(label.trim().replace(WHITESPACE_REGEX, " "))
     }
 
     /**
