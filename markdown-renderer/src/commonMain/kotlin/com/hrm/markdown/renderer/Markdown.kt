@@ -211,6 +211,7 @@ private fun rememberStreamingDocument(
             customEmojiMap = config.customEmojiMap,
             enableAsciiEmoticons = config.enableAsciiEmoticons,
             enableLinting = config.enableLinting,
+            appendCoalesceThreshold = config.appendCoalesceThreshold,
         )
     }
     var state by remember(parser, runtimePipeline) { mutableStateOf(StreamingDocumentState<Document>()) }

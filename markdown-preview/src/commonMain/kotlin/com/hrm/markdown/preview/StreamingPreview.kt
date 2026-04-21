@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hrm.markdown.renderer.Markdown
 import androidx.compose.foundation.rememberScrollState
+import com.hrm.markdown.renderer.MarkdownConfig
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -144,6 +145,7 @@ private fun StreamingMarkdownDemo() {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp),
+                config = MarkdownConfig.LlmStreaming,
                 scrollState = scrollState,
                 isStreaming = isRunning,
                 onLinkClick = { url ->

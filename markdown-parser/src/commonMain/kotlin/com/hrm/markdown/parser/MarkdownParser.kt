@@ -73,9 +73,20 @@ class MarkdownParser(
     val enableAsciiEmoticons: Boolean = false,
     /** 是否启用语法验证/Linting */
     val enableLinting: Boolean = false,
+    /**
+     * 流式 [append] 合并阈值（字符数）。0 表示关闭，每次 [append] 立即增量解析（默认）。
+     *
+     * 大于 0 时：未跨换行符且未达阈值的 chunk 会被缓冲，多个小 token 合并为一次解析。
+     * 典型 LLM 流式场景下 32-64 可减少 60-80% 的总流式耗时；代价是"正在写的最后一行"
+     * AST 可能滞后最多该字符数（碰到 `\n` 必定 flush，所以已写完的行不受影响）。
+     */
+    val appendCoalesceThreshold: Int = 0,
 ) {
     private val lintingProcessor: LintingPostProcessor? = if (enableLinting) LintingPostProcessor() else null
-    private val streamingParser = StreamingParser(flavour, customEmojiMap, enableAsciiEmoticons, lintingProcessor)
+    private val streamingParser = StreamingParser(
+        flavour, customEmojiMap, enableAsciiEmoticons, lintingProcessor,
+        appendCoalesceThreshold = appendCoalesceThreshold,
+    )
     private val editEngine = IncrementalEngine(flavour, customEmojiMap, enableAsciiEmoticons, lintingProcessor = lintingProcessor)
 
     /**

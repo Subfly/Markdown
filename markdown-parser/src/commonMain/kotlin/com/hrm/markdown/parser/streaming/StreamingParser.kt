@@ -42,12 +42,20 @@ class StreamingParser(
     customEmojiMap: Map<String, String> = emptyMap(),
     enableAsciiEmoticons: Boolean = false,
     lintingProcessor: LintingPostProcessor? = null,
+    /** 流式 append 合并阈值。详见 [IncrementalEngine.appendCoalesceThreshold]。 */
+    appendCoalesceThreshold: Int = 0,
 ) {
     companion object {
         private const val TAG = "StreamingParser"
     }
 
-    private val engine = IncrementalEngine(flavour, customEmojiMap, enableAsciiEmoticons, lintingProcessor = lintingProcessor)
+    private val engine = IncrementalEngine(
+        flavour,
+        customEmojiMap,
+        enableAsciiEmoticons,
+        lintingProcessor = lintingProcessor,
+        appendCoalesceThreshold = appendCoalesceThreshold,
+    )
 
     /** 当前文档 AST */
     val document: Document get() = engine.document

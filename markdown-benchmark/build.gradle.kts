@@ -34,3 +34,17 @@ tasks.register<JavaExec>("incrementalEditBenchmark") {
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("com.hrm.markdown.benchmark.IncrementalEditBenchmarkKt")
 }
+
+tasks.register<JavaExec>("llmStreamingBenchmark") {
+    group = "benchmark"
+    description = "Simulates LLM token-by-token streaming and reports per-append latency + frame-budget violations."
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.hrm.markdown.benchmark.LlmStreamingBenchmarkKt")
+}
+
+tasks.register<JavaExec>("llmRecomposeBenchmark") {
+    group = "benchmark"
+    description = "Simulates LLM streaming and counts equivalent Compose block recompositions via stableKey/contentHash diff."
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.hrm.markdown.benchmark.LlmRecomposeBenchmarkKt")
+}
