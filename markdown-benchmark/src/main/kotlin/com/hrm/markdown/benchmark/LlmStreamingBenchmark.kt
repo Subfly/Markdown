@@ -30,10 +30,10 @@ private const val DEFAULT_ITERATIONS = 5
 
 fun main(args: Array<String>) {
     val cli = LlmCli.parse(args)
-    val doc = buildLlmLikeDocument(cli.bytes)
+    val doc = if (cli.codeHeavy) buildCodeHeavyDocument(cli.bytes) else buildLlmLikeDocument(cli.bytes)
     val chunks = chunkLikeLlm(doc, cli.tokenSize, Random(0xA17BAB1EL))
 
-    println("LLM Streaming Benchmark")
+    println("LLM Streaming Benchmark${if (cli.codeHeavy) " [CODE-HEAVY]" else ""}")
     println("docBytes=${doc.length}, chunks=${chunks.size}, avgChunk=${doc.length / chunks.size}")
     if (cli.coalesce > 0) {
         println("appendCoalesceThreshold=${cli.coalesce} chars (parser-level)")
@@ -111,6 +111,7 @@ private data class LlmCli(
     val warmups: Int,
     val iterations: Int,
     val coalesce: Int,
+    val codeHeavy: Boolean,
 ) {
     companion object {
         fun parse(args: Array<String>): LlmCli {
@@ -119,16 +120,18 @@ private data class LlmCli(
             var warmups = DEFAULT_WARMUPS
             var iterations = DEFAULT_ITERATIONS
             var coalesce = 0
+            var codeHeavy = false
             var i = 0
             while (i < args.size) {
                 when (args[i]) {
-                    "--bytes" -> bytes = args.getOrNull(i + 1)?.toIntOrNull() ?: bytes
-                    "--tokenSize" -> tokenSize = args.getOrNull(i + 1)?.toIntOrNull() ?: tokenSize
-                    "--warmups" -> warmups = args.getOrNull(i + 1)?.toIntOrNull() ?: warmups
-                    "--iterations" -> iterations = args.getOrNull(i + 1)?.toIntOrNull() ?: iterations
-                    "--coalesce" -> coalesce = args.getOrNull(i + 1)?.toIntOrNull() ?: coalesce
+                    "--bytes" -> { bytes = args.getOrNull(i + 1)?.toIntOrNull() ?: bytes; i++ }
+                    "--tokenSize" -> { tokenSize = args.getOrNull(i + 1)?.toIntOrNull() ?: tokenSize; i++ }
+                    "--warmups" -> { warmups = args.getOrNull(i + 1)?.toIntOrNull() ?: warmups; i++ }
+                    "--iterations" -> { iterations = args.getOrNull(i + 1)?.toIntOrNull() ?: iterations; i++ }
+                    "--coalesce" -> { coalesce = args.getOrNull(i + 1)?.toIntOrNull() ?: coalesce; i++ }
+                    "--codeBlockHeavy" -> codeHeavy = true
                 }
-                i += 2
+                i++
             }
             return LlmCli(
                 bytes.coerceAtLeast(1024),
@@ -136,12 +139,39 @@ private data class LlmCli(
                 warmups.coerceAtLeast(0),
                 iterations.coerceAtLeast(1),
                 coalesce.coerceAtLeast(0),
+                codeHeavy,
             )
         }
     }
 }
 
 private fun Double.fmt(): String = "%.3f".format(this)
+
+/**
+ * Code-heavy 文档：模拟编程助手场景。约 70% 字节是大段代码块（每块 30~80 行）。
+ * 用于验证 IncrementalEngine 对未闭合 FencedCodeBlock 的实例复用 + 增量解析路径
+ * 在 LLM 大代码生成场景下不会退化。
+ */
+private fun buildCodeHeavyDocument(targetBytes: Int): String = buildString(targetBytes + 1024) {
+    var section = 0
+    while (length < targetBytes) {
+        section++
+        append("## Code example ").append(section).append("\n\n")
+        append("Here is implementation ").append(section).append(":\n\n")
+        append("```kotlin\n")
+        val lines = 30 + (section * 7) % 50
+        repeat(lines) { i ->
+            append("fun method").append(section).append('_').append(i)
+                .append("(x: Int, y: Long): String {\n")
+            append("    val result = x.toLong() * y + ").append(i).append("L\n")
+            append("    val list = (0..x).map { it * ").append(i + 1).append(" }\n")
+            append("    return \"section=").append(section).append(" idx=").append(i).append(" v=\$result\"\n")
+            append("}\n")
+        }
+        append("```\n\n")
+        append("That was section ").append(section).append(".\n\n")
+    }
+}
 
 /**
  * 构造一篇约 [targetBytes] 字节的 LLM 风格混合 Markdown。

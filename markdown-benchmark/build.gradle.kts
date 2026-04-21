@@ -48,3 +48,10 @@ tasks.register<JavaExec>("llmRecomposeBenchmark") {
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("com.hrm.markdown.benchmark.LlmRecomposeBenchmarkKt")
 }
+
+tasks.register<JavaExec>("mainThreadJankBenchmark") {
+    group = "benchmark"
+    description = "Measures whether running streaming append on the main thread causes frame jank, vs offloading to a background pool."
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.hrm.markdown.benchmark.MainThreadJankBenchmarkKt")
+}
