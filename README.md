@@ -382,11 +382,16 @@ document.diagnostics.forEach { diagnostic ->
 ┌─────────────────────────────────────────────────────────────┐
 │                     Your Compose App                        │
 ├─────────────────────────────────────────────────────────────┤
-│  markdown-renderer        │  markdown-preview               │
-│  AST → Compose UI         │  Interactive demo & showcase    │
-│  Block/Inline renderers   │  Categorized feature browser    │
-│  Theme system             │                                 │
-├───────────────────────────┤                                 │
+│  markdown-preview                                           │
+│  Interactive demo & showcase                                │
+├─────────────────────────────────────────────────────────────┤
+│  markdown-renderer                                          │
+│  AST → Compose UI / HTML                                    │
+│  Block/Inline renderers, theme, images                      │
+├─────────────────────────────────────────────────────────────┤
+│  markdown-runtime                                           │
+│  Directive plugins / input transforms / runtime pipeline    │
+├─────────────────────────────────────────────────────────────┤
 │  markdown-parser                                            │
 │  Markdown → AST                                             │
 │  Streaming / Incremental / Flavour system                   │
@@ -397,6 +402,7 @@ document.diagnostics.forEach { diagnostic ->
 | Module | Description |
 |--------|-------------|
 | `:markdown-parser` | Core parsing engine — Markdown string → AST. Streaming, incremental, multi-flavour. |
+| `:markdown-runtime` | Directive runtime layer — plugin registry, input transforms, directive pipeline, source maps. |
 | `:markdown-renderer` | Rendering engine — AST → Compose UI. Theming, image loading, code highlighting. |
 | `:markdown-preview` | Interactive showcase — categorized demo of all supported features. |
 | `:composeApp` | Cross-platform demo app (Android/iOS/Desktop/Web). |

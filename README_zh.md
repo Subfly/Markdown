@@ -382,11 +382,16 @@ document.diagnostics.forEach { diagnostic ->
 ┌─────────────────────────────────────────────────────────────┐
 │                     Your Compose App                        │
 ├─────────────────────────────────────────────────────────────┤
-│  markdown-renderer        │  markdown-preview               │
-│  AST → Compose UI         │  交互式展示与演示              │
-│  块级/行内渲染器          │  分类功能浏览器                │
-│  主题系统                 │                                 │
-├───────────────────────────┤                                 │
+│  markdown-preview                                           │
+│  交互式展示与演示                                           │
+├─────────────────────────────────────────────────────────────┤
+│  markdown-renderer                                          │
+│  AST → Compose UI / HTML                                    │
+│  块级/行内渲染、主题、图片加载                              │
+├─────────────────────────────────────────────────────────────┤
+│  markdown-runtime                                           │
+│  Directive 插件注册、输入转换、运行时管线                   │
+├─────────────────────────────────────────────────────────────┤
 │  markdown-parser                                            │
 │  Markdown → AST                                             │
 │  流式 / 增量 / Flavour 系统                                 │
@@ -397,6 +402,7 @@ document.diagnostics.forEach { diagnostic ->
 | 模块 | 描述 |
 |------|------|
 | `:markdown-parser` | 核心解析引擎 — Markdown 字符串 → AST。支持流式、增量、多 Flavour。 |
+| `:markdown-runtime` | Directive 运行时层 — 插件注册表、输入转换器、directive 管线、source map。 |
 | `:markdown-renderer` | 渲染引擎 — AST → Compose UI。主题、图片加载、代码高亮。 |
 | `:markdown-preview` | 交互式展示 — 分类浏览所有支持功能的演示。 |
 | `:composeApp` | 跨平台 Demo 应用（Android/iOS/Desktop/Web）。 |

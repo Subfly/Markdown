@@ -20,7 +20,7 @@
 | 部分 | 是否必填 | 说明 |
 |------|---------|------|
 | `type` | ✅ 必填 | 提交类型，决定版本号变更方式 |
-| `scope` | ⬜ 可选 | 影响范围（模块名），如 `parser`、`renderer`、`app` |
+| `scope` | ⬜ 可选 | 影响范围（模块名），如 `parser`、`runtime`、`renderer`、`app` |
 | `subject` | ✅ 必填 | 简短描述，不超过 72 个字符，**不加句号** |
 | `body` | ⬜ 可选 | 详细说明，解释"为什么"和"怎么做" |
 | `footer` | ⬜ 可选 | 关联 Issue、Breaking Change 说明等 |
@@ -179,6 +179,7 @@ This reverts commit abc1234.
 | Scope | 对应模块 | 说明 |
 |-------|---------|------|
 | `parser` | `markdown-parser` | Markdown 解析器（AST 生成） |
+| `runtime` | `markdown-runtime` | Directive 运行时（插件、转换、管线） |
 | `renderer` | `markdown-renderer` | 渲染引擎（AST → Compose UI） |
 | `app` | `composeApp` | Compose Multiplatform Demo 应用 |
 | `android` | `androidapp` | Android 独立应用 |
@@ -197,6 +198,8 @@ This reverts commit abc1234.
 
 - [ ] `markdown-parser` 中实现了解析逻辑
 - [ ] `markdown-parser` 中添加了对应的单元测试（`commonTest`）
+- [ ] `markdown-runtime` 中实现了运行时/插件逻辑（如涉及 directive 或插件行为）
+- [ ] `markdown-runtime` 中添加了对应的单元测试（如涉及 runtime 行为）
 - [ ] `markdown-renderer` 中实现了渲染逻辑（如涉及渲染）
 - [ ] `markdown-renderer` 中添加了对应的单元测试（如涉及渲染）
 - [ ] 运行 `./gradlew allTests` 并全部通过
@@ -208,6 +211,9 @@ This reverts commit abc1234.
 ```bash
 # Parser 模块测试
 ./gradlew :markdown-parser:allTests
+
+# Runtime 模块测试
+./gradlew :markdown-runtime:allTests
 
 # Renderer 模块测试
 ./gradlew :markdown-renderer:allTests

@@ -20,7 +20,7 @@ Combined with [Semantic Versioning (SemVer)](https://semver.org/), it enables **
 | Part | Required | Description |
 |------|----------|-------------|
 | `type` | ✅ Required | Commit type, determines how the version number changes |
-| `scope` | ⬜ Optional | Affected scope (module name), e.g. `parser`, `renderer`, `app` |
+| `scope` | ⬜ Optional | Affected scope (module name), e.g. `parser`, `runtime`, `renderer`, `app` |
 | `subject` | ✅ Required | Brief description, max 72 characters, **no period** |
 | `body` | ⬜ Optional | Detailed explanation of "why" and "how" |
 | `footer` | ⬜ Optional | Related Issues, Breaking Change notes, etc. |
@@ -181,6 +181,7 @@ The following scopes are recommended for this project:
 | Scope | Module | Description |
 |-------|--------|-------------|
 | `parser` | `markdown-parser` | Markdown parser (AST generation) |
+| `runtime` | `markdown-runtime` | Directive runtime (plugins, transforms, pipeline) |
 | `renderer` | `markdown-renderer` | Rendering engine (AST → Compose UI) |
 | `app` | `composeApp` | Compose Multiplatform Demo application |
 | `android` | `androidapp` | Android standalone application |
@@ -199,6 +200,8 @@ When developing a new feature, please verify the following:
 
 - [ ] Parsing logic implemented in `markdown-parser`
 - [ ] Corresponding unit tests added in `markdown-parser` (`commonTest`)
+- [ ] Runtime/plugin logic implemented in `markdown-runtime` (if directive/plugin behavior changed)
+- [ ] Corresponding unit tests added in `markdown-runtime` (if runtime behavior changed)
 - [ ] Rendering logic implemented in `markdown-renderer` (if rendering is involved)
 - [ ] Corresponding unit tests added in `markdown-renderer` (if rendering is involved)
 - [ ] `./gradlew allTests` passes successfully
@@ -210,6 +213,9 @@ When developing a new feature, please verify the following:
 ```bash
 # Parser module tests
 ./gradlew :markdown-parser:allTests
+
+# Runtime module tests
+./gradlew :markdown-runtime:allTests
 
 # Renderer module tests
 ./gradlew :markdown-renderer:allTests
