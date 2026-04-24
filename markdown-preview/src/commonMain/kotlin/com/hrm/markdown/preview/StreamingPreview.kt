@@ -47,12 +47,44 @@ internal val streamingPreviewGroups = listOf(
                 title = "完整流式渲染",
                 content = { StreamingMarkdownDemo() }
             ),
+            PreviewItem(
+                id = "streaming_issue_19_list_flicker",
+                title = "Issue #19 列表闪烁回归",
+                markdown = issue19StreamingMarkdown(),
+                content = { Issue19StreamingDemo() }
+            ),
         )
     ),
 )
 
 @Composable
 private fun StreamingMarkdownDemo() {
+    TokenStreamingMarkdownDemo(
+        tokens = streamingTokens,
+        emptyHint = "点击「开始流式生成」按钮，模拟 LLM 逐 token 输出 Markdown\n\n" +
+                "Markdown 组件内置流式优化：\n" +
+                "• 自动节流渲染，避免高频更新导致的布局抖动\n" +
+                "• 流式期间跳过 SelectionContainer，减少 intrinsic 测量\n" +
+                "• 流式结束后自动恢复文本选择能力"
+    )
+}
+
+@Composable
+private fun Issue19StreamingDemo() {
+    TokenStreamingMarkdownDemo(
+        tokens = issue19StreamingTokens,
+        emptyHint = "该示例复现 Issue #19 的输入形态：\n" +
+                "有序列表项流式输出后，下一行先到达缩进与 `-` marker，\n" +
+                "随后才补齐嵌套列表正文。\n\n" +
+                "期望行为：流式过程中不应短暂显示为 SetextHeading。"
+    )
+}
+
+@Composable
+private fun TokenStreamingMarkdownDemo(
+    tokens: List<String>,
+    emptyHint: String,
+) {
     var text by remember { mutableStateOf("") }
     var isRunning by remember { mutableStateOf(false) }
     var streamFinished by remember { mutableStateOf(false) }
@@ -73,7 +105,7 @@ private fun StreamingMarkdownDemo() {
                         isRunning = true
                         streamFinished = false
                         scope.launch {
-                            for (token in streamingTokens) {
+                            for (token in tokens) {
                                 text += token
                                 delay(token.streamDelay())
                             }
@@ -129,11 +161,7 @@ private fun StreamingMarkdownDemo() {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "点击「开始流式生成」按钮，模拟 LLM 逐 token 输出 Markdown\n\n" +
-                            "Markdown 组件内置流式优化：\n" +
-                            "• 自动节流渲染，避免高频更新导致的布局抖动\n" +
-                            "• 流式期间跳过 SelectionContainer，减少 intrinsic 测量\n" +
-                            "• 流式结束后自动恢复文本选择能力",
+                    text = emptyHint,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 24.sp
@@ -205,6 +233,67 @@ private fun String.streamDelay(): Long = when {
     this.length > 10 -> 10L
     else -> 25L
 }
+
+private fun issue19StreamingMarkdown(): String = """
+截至2025年5月，根据我的知识，DeepSeek 是中国一家专注于通用人工智能（AGI）研究与应用的科技公司。以下是我了解的一些关键信息：
+
+1. **公司背景**  
+   - DeepSeek 由国内顶尖的 AI 研究团队创立，核心成员来自高校、科研机构或知名科技企业，致力于突破大模型与 AGI 领域的技术边界。
+
+2. **主营业务与产品**  
+   - 专注于开发高性能、低成本的大语言模型（LLM）及多模态模型，在代码生成、逻辑推理、长文本理解等领域表现突出。
+   - 提供 API 服务、企业级解决方案及垂直领域定制化应用。
+
+3. **技术特点**  
+   - 强调算法与工程协同优化，在模型架构创新、训练效率提升、数据质量控制等方面有较多实践。
+   - 积极参与开源社区，部分模型在国际权威评测中位列前茅。
+""".trimIndent()
+
+private val issue19StreamingTokens = listOf(
+    "截至2025年5月，根据我的知识，DeepSeek 是中国一家专注于通用人工智能（AGI）研究与应用的科技公司。以下是我了解的一些关键信息：",
+    "\n\n",
+    "1. ",
+    "**公司背景**",
+    "  ",
+    "\n",
+    "   ",
+    "-",
+    " ",
+    "DeepSeek 由国内顶尖的 AI 研究团队创立，",
+    "核心成员来自高校、科研机构或知名科技企业，",
+    "致力于突破大模型与 AGI 领域的技术边界。",
+    "\n\n",
+    "2. ",
+    "**主营业务与产品**",
+    "  ",
+    "\n",
+    "   ",
+    "-",
+    " ",
+    "专注于开发高性能、低成本的大语言模型（LLM）及多模态模型，",
+    "在代码生成、逻辑推理、长文本理解等领域表现突出。",
+    "  ",
+    "\n",
+    "   ",
+    "-",
+    " ",
+    "提供 API 服务、企业级解决方案及垂直领域定制化应用。",
+    "\n\n",
+    "3. ",
+    "**技术特点**",
+    "  ",
+    "\n",
+    "   ",
+    "-",
+    " ",
+    "强调算法与工程协同优化，在模型架构创新、训练效率提升、数据质量控制等方面有较多实践。",
+    "  ",
+    "\n",
+    "   ",
+    "-",
+    " ",
+    "积极参与开源社区，部分模型在国际权威评测中位列前茅。"
+)
 
 private val streamingTokens = listOf(
     // ═══ 标题 + 概述 ═══

@@ -109,6 +109,29 @@ class IncrementalEngineTest {
         assertTrue(doc.children.isNotEmpty())
     }
 
+    @Test
+    fun should_not_drop_previous_list_items_when_streaming_nested_list_marker() {
+        val parser = MarkdownParser()
+        parser.beginStream()
+
+        parser.append("1. **公司背景**  \n")
+        parser.append("   - DeepSeek 由国内顶尖的 AI 研究团队创立。\n\n")
+
+        parser.append("2. **主营业务与产品**  \n")
+        // 中间态：只到达缩进 + '-'（历史上这里会闪一下并可能导致前面的项被裁掉）
+        val interim = parser.append("   -")
+        val final = parser.append(" 专注于开发高性能、低成本的大语言模型。\n\n")
+
+        val list1 = interim.children.filterIsInstance<ListBlock>().firstOrNull { it.ordered }
+        assertTrue(list1 != null)
+        assertTrue(list1.children.filterIsInstance<ListItem>().size >= 2)
+        assertTrue(!containsSetextHeading(interim))
+
+        val list2 = final.children.filterIsInstance<ListBlock>().firstOrNull { it.ordered }
+        assertTrue(list2 != null)
+        assertEquals(2, list2.children.filterIsInstance<ListItem>().size)
+    }
+
     // ────── 编辑场景：多次编辑 ──────
 
     @Test
@@ -158,5 +181,14 @@ class IncrementalEngineTest {
         val heading = doc.children.first()
         assertTrue(heading is Heading)
         assertEquals(3, (heading as Heading).level)
+    }
+
+    private fun containsSetextHeading(node: Node): Boolean {
+        if (node is SetextHeading) return true
+        return if (node is ContainerNode) {
+            node.children.any { child -> containsSetextHeading(child) }
+        } else {
+            false
+        }
     }
 }

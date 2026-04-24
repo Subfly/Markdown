@@ -504,6 +504,7 @@ class IncrementalEngine(
     }
 
     private fun isBlockFullyClosed(block: Node, source: SourceText): Boolean {
+        if (block is ListBlock) return false
         val endLine = block.lineRange.endLine
         if (endLine >= source.lineCount) return false
         return hasBlankLineInRange(source, endLine, source.lineCount)
@@ -534,8 +535,12 @@ class IncrementalEngine(
                 block
             }
             is SetextHeading -> {
-                autoCloseInlineContent(block, source)
-                block
+                if (shouldDowngradeTransientSetextHeading(block, source)) {
+                    createDisplayParagraphFromSetextHeading(block, source)
+                } else {
+                    autoCloseInlineContent(block, source)
+                    block
+                }
             }
             is BlockQuote -> {
                 val children = block.children.toList()
@@ -565,6 +570,52 @@ class IncrementalEngine(
             }
             else -> block
         }
+    }
+
+    private fun shouldDowngradeTransientSetextHeading(
+        block: SetextHeading,
+        source: SourceText,
+    ): Boolean {
+        if (!_isStreaming) return false
+        if (block.lineRange.endLine != source.lineCount) return false
+        val underlineLine = source.lineContent(source.lineCount - 1).trim()
+        if (underlineLine.isEmpty()) return false
+        return underlineLine.all { it == '-' || it == '=' }
+    }
+
+    private fun createDisplayParagraphFromSetextHeading(
+        heading: SetextHeading,
+        source: SourceText,
+    ): Paragraph {
+        val paragraph = Paragraph()
+        val content = heading.rawContent ?: buildString {
+            val contentEnd = (heading.lineRange.endLine - 1).coerceAtLeast(heading.lineRange.startLine)
+            for (line in heading.lineRange.startLine until contentEnd) {
+                if (line > heading.lineRange.startLine) append('\n')
+                append(source.lineContent(line).trimStart().trimEnd())
+            }
+        }
+        paragraph.rawContent = content
+        paragraph.lineRange = LineRange(
+            heading.lineRange.startLine,
+            (heading.lineRange.endLine - 1).coerceAtLeast(heading.lineRange.startLine + 1)
+        )
+        paragraph.sourceRange = heading.sourceRange
+        if (content.isNotEmpty()) {
+            val tempDoc = Document()
+            tempDoc.linkDefinitions.putAll(_document.linkDefinitions)
+            val inlineParser = InlineParser(
+                tempDoc,
+                customEmojiMap,
+                enableAsciiEmoticons,
+                flavour.enableGfmAutolinks,
+                flavour.enableExtendedInline,
+                flavour.enableEmphasisCoalescing,
+                flavour.enableStrikethrough
+            )
+            inlineParser.parseInlines(content, paragraph)
+        }
+        return paragraph
     }
 
     private fun autoCloseInlineContent(node: ContainerNode, source: SourceText) {

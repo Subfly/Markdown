@@ -221,7 +221,14 @@ fun MarkdownPreview() {
         else -> {
             CategoryListScreen(
                 categories = previewCategories,
-                onCategoryClick = { selectedCategory = it }
+                onCategoryClick = { category ->
+                    if (category.groups.size == 1) {
+                        selectedCategory = category
+                        selectedGroup = category.groups.first()
+                    } else {
+                        selectedCategory = category
+                    }
+                }
             )
         }
     }
