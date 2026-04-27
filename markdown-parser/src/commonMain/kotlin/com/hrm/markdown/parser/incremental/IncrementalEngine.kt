@@ -321,12 +321,20 @@ class IncrementalEngine(
         val oldChildren = _document.children
         // 使用脏区域追踪器计算安全重解析起点
         val lastStableBlock = if (stableBlockCount > 0) oldChildren.getOrNull(stableBlockCount - 1) else null
-        val reparseStart = if (lastStableBlock != null && isSelfDelimitedBlock(lastStableBlock)) {
-            stableEndLine.coerceAtMost(newSource.lineCount)
+        val safeStableEndLine = if (lastStableBlock != null && !isSelfDelimitedBlock(lastStableBlock)) {
+            lastStableBlock.lineRange.startLine
         } else {
-            dirtyTracker.computeAppendDirtyRange(stableEndLine, newSource).startLine
+            stableEndLine
         }
-        HLog.v(TAG) { "doIncrementalAppend: reparseStart=$reparseStart, lines=${newSource.lineCount}, stableEndLine=$stableEndLine" }
+        val reparseStart = if (lastStableBlock != null && isSelfDelimitedBlock(lastStableBlock)) {
+            safeStableEndLine.coerceAtMost(newSource.lineCount)
+        } else {
+            dirtyTracker.computeAppendDirtyRange(safeStableEndLine, newSource).startLine
+        }
+        HLog.v(TAG) {
+            "doIncrementalAppend: reparseStart=$reparseStart, lines=${newSource.lineCount}, " +
+                "stableEndLine=$stableEndLine, safeStableEndLine=$safeStableEndLine"
+        }
 
         // 解析脏区域（BlockParser 只做块结构 + 行内解析，后处理由 Engine 统一控制）
         val parser = BlockParser(
@@ -619,18 +627,38 @@ class IncrementalEngine(
     }
 
     private fun autoCloseInlineContent(node: ContainerNode, source: SourceText) {
-        val inlineText = extractInlineText(node)
+        val inlineText = currentInlineSource(node, source)
         if (inlineText.isEmpty()) return
 
         val repairSuffix = InlineAutoCloser.buildRepairSuffix(inlineText)
-        if (repairSuffix.isEmpty()) return
-
         val repairedContent = inlineText + repairSuffix
         val tempDoc = Document()
         tempDoc.linkDefinitions.putAll(_document.linkDefinitions)
         val inlineParser = InlineParser(tempDoc, customEmojiMap, enableAsciiEmoticons, flavour.enableGfmAutolinks, flavour.enableExtendedInline, flavour.enableEmphasisCoalescing, flavour.enableStrikethrough)
         node.clearChildren()
         inlineParser.parseInlines(repairedContent, node)
+    }
+
+    private fun currentInlineSource(node: ContainerNode, source: SourceText): String {
+        val raw = when (node) {
+            is Paragraph -> node.rawContent
+            is Heading -> node.rawContent
+            is SetextHeading -> node.rawContent
+            is TableCell -> node.rawContent
+            else -> null
+        }
+        if (!raw.isNullOrEmpty()) return raw
+
+        if (node.lineRange.lineCount > 0 && node.lineRange.endLine <= source.lineCount) {
+            return buildString {
+                for (line in node.lineRange.startLine until node.lineRange.endLine) {
+                    if (line > node.lineRange.startLine) append('\n')
+                    append(source.lineContent(line).trimStart().trimEnd())
+                }
+            }
+        }
+
+        return extractInlineText(node)
     }
 
     private fun autoCloseTableCells(table: Table, source: SourceText) {

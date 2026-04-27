@@ -132,6 +132,56 @@ class IncrementalEngineTest {
         assertEquals(2, list2.children.filterIsInstance<ListItem>().size)
     }
 
+    @Test
+    fun should_update_content_hash_and_plain_text_for_streaming_tail_append() {
+        val parser = MarkdownParser()
+        parser.beginStream()
+
+        parser.append(
+            """
+            **需要说明的是**:  
+            - 如果你有具体的技术细节、商业模式或某款产品想深入讨论，我可以结
+            """.trimIndent()
+        )
+        val midDoc = parser.append("")
+
+        val finalDoc = parser.append("合已有知识进一步交流。")
+
+        val midParagraph = findLastParagraph(midDoc)
+        val finalParagraph = findLastParagraph(finalDoc)
+
+        assertTrue(midParagraph != null)
+        assertTrue(finalParagraph != null)
+        assertTrue(extractPlainText(midParagraph).contains("我可以结"))
+        assertTrue(extractPlainText(finalParagraph).contains("我可以结合已有知识进一步交流。"))
+        assertTrue(midParagraph.contentHash != finalParagraph.contentHash)
+    }
+
+    @Test
+    fun should_keep_reparsing_from_container_start_when_streaming_list_tail_grows() {
+        val parser = MarkdownParser()
+        parser.beginStream()
+
+        parser.append(
+            """
+            **需要说明的是**:  
+            - 我的信息可能无法涵盖2025年5月之后的最新动态，如需了解该公司近期进展（如新模型发布、合作伙伴、融资情况等），建议查阅最新权威报道或官方渠道。  
+            - 如果你有具体的技术细节、商业模式或某款产品想深入讨论，我可以结
+            """.trimIndent()
+        )
+
+        val midDoc = parser.append("")
+        val finalDoc = parser.append("合已有知识进一步交流。")
+
+        val midParagraph = findLastParagraph(midDoc)
+        val finalParagraph = findLastParagraph(finalDoc)
+
+        assertTrue(midParagraph != null)
+        assertTrue(finalParagraph != null)
+        assertTrue(extractPlainText(midParagraph).contains("我可以结"))
+        assertTrue(extractPlainText(finalParagraph).contains("我可以结合已有知识进一步交流。"))
+    }
+
     // ────── 编辑场景：多次编辑 ──────
 
     @Test
@@ -190,5 +240,25 @@ class IncrementalEngineTest {
         } else {
             false
         }
+    }
+
+    private fun findLastParagraph(node: Node): Paragraph? {
+        if (node is Paragraph) return node
+        if (node is ContainerNode) {
+            for (child in node.children.asReversed()) {
+                val found = findLastParagraph(child)
+                if (found != null) return found
+            }
+        }
+        return null
+    }
+
+    private fun extractPlainText(node: Node): String = when (node) {
+        is Text -> node.literal
+        is InlineCode -> node.literal
+        is SoftLineBreak -> " "
+        is HardLineBreak -> "\n"
+        is ContainerNode -> node.children.joinToString(separator = "") { child -> extractPlainText(child) }
+        else -> ""
     }
 }

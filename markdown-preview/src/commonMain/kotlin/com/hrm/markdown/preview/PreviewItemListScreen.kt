@@ -47,31 +47,56 @@ internal fun PreviewItemListScreen(
             )
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(vertical = 12.dp)
-        ) {
-            items(items, key = { it.id }) { item ->
-                PreviewCard(item = item)
+        if (items.size == 1) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
+                PreviewCard(
+                    item = items.first(),
+                    modifier = Modifier.fillMaxSize(),
+                    expandContent = true
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(vertical = 12.dp)
+            ) {
+                items(items, key = { it.id }) { item ->
+                    PreviewCard(item = item)
+                }
             }
         }
     }
 }
 
 @Composable
-internal fun PreviewCard(item: PreviewItem) {
+internal fun PreviewCard(
+    item: PreviewItem,
+    modifier: Modifier = Modifier,
+    expandContent: Boolean = false,
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp)
+            modifier = if (expandContent) {
+                Modifier
+                    .fillMaxSize()
+                    .padding(12.dp)
+            } else {
+                Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp)
+            }
         ) {
             Text(
                 text = item.title,
@@ -80,9 +105,18 @@ internal fun PreviewCard(item: PreviewItem) {
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 400.dp)
+                modifier = if (expandContent) {
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                } else {
+                    // In LazyColumn item scope, children are measured with infinite maxHeight.
+                    // If the content is scrollable (e.g. Markdown uses verticalScroll),
+                    // it must be constrained to avoid "infinity max height" crash.
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp)
+                }
             ) {
                 item.content()
             }

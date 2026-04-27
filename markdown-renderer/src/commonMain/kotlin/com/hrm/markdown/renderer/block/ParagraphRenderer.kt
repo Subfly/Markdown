@@ -39,7 +39,9 @@ internal fun ParagraphRenderer(
     node: Paragraph,
     modifier: Modifier = Modifier,
 ) {
-    val hasImage = remember(node) { node.children.any { it is Image } }
+    val hasImage = remember(node, node.contentHash, node.lineRange.endLine, node.childCount()) {
+        node.children.any { it is Image }
+    }
 
     if (!hasImage) {
         // 无图片的段落：保持原有的简单渲染路径
@@ -104,7 +106,9 @@ private fun MixedParagraphRenderer(
     val codeTheme = LocalCodeHighlightTheme.current ?: LocalCodeTheme.current
 
     // 将段落子节点拆分为文本段和图片段
-    val segments = remember(node) { splitParagraphSegments(node.children) }
+    val segments = remember(node, node.contentHash, node.lineRange.endLine, node.childCount()) {
+        splitParagraphSegments(node.children)
+    }
 
     Column(modifier = modifier.fillMaxWidth()) {
         for (segment in segments) {

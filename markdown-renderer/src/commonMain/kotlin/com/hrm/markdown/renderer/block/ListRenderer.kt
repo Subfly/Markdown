@@ -12,6 +12,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -39,11 +40,13 @@ internal fun ListBlockRenderer(
     ) {
         val items = node.children.filterIsInstance<ListItem>()
         items.forEachIndexed { index, item ->
-            ListItemRenderer(
-                node = item,
-                ordered = node.ordered,
-                index = node.startNumber + index,
-            )
+            key(item.stableKey, blockRenderRevision(item)) {
+                ListItemRenderer(
+                    node = item,
+                    ordered = node.ordered,
+                    index = node.startNumber + index,
+                )
+            }
         }
     }
 }

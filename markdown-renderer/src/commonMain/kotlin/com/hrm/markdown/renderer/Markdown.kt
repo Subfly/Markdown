@@ -31,7 +31,11 @@ import com.hrm.markdown.parser.MarkdownParser
 import com.hrm.markdown.parser.ast.BlankLine
 import com.hrm.markdown.parser.ast.ContainerNode
 import com.hrm.markdown.parser.ast.Document
+import com.hrm.markdown.parser.ast.HardLineBreak
+import com.hrm.markdown.parser.ast.InlineCode
 import com.hrm.markdown.parser.ast.Node
+import com.hrm.markdown.parser.ast.SoftLineBreak
+import com.hrm.markdown.parser.ast.Text
 import com.hrm.markdown.parser.log.HLog
 import com.hrm.markdown.renderer.block.BlockRenderer
 import com.hrm.markdown.renderer.block.blockRenderRevision
@@ -342,8 +346,9 @@ private fun InnerMarkdown(
         }
     }
 
-    // 使用节流后的 document 进行渲染
-    val renderDocument = throttledDocument
+    // 仅在流式期间使用节流后的 document；流结束后直接消费最终 document，
+    // 避免 endStream() 后 renderer 仍停留在旧的流式快照。
+    val renderDocument = if (isStreaming) throttledDocument else document
 
     // 使用结构性比较缓存 blockNodes：
     // 每次 token 到达都产生新的 Document 对象，但大部分 children 的引用没变。
@@ -492,9 +497,7 @@ internal fun MarkdownBlockChildren(
     parent: ContainerNode,
     modifier: Modifier = Modifier,
 ) {
-    val blockNodes = remember(parent) {
-        parent.children.filter { it !is BlankLine }
-    }
+    val blockNodes = parent.children.filter { it !is BlankLine }
     val theme = LocalMarkdownTheme.current
 
     Column(

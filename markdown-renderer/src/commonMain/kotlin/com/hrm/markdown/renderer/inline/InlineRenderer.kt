@@ -75,8 +75,17 @@ internal fun rememberInlineContent(
     val density = LocalDensity.current
     val textMeasurer = rememberTextMeasurer()
     val inlineCodeTheme = LocalCodeHighlightTheme.current ?: LocalCodeTheme.current
+    val inlineRevision = remember(parent) {
+        {
+            var acc = parent.contentHash
+            acc = acc * 31 + parent.lineRange.endLine.toLong()
+            acc = acc * 31 + parent.childCount().toLong()
+            acc
+        }
+    }
     return remember(
         parent,
+        inlineRevision(),
         theme,
         directiveRegistry,
         onLinkClick,
