@@ -148,6 +148,35 @@ internal val cjkPreviewGroups = listOf(
                 }
             ),
             PreviewItem(
+                id = "cjk_quotes_adjacent",
+                title = "引号/标点紧邻中文的强调",
+                content = {
+                    Markdown(
+                        markdown = """
+                            不需要额外插入空格，强调/粗体应正常闭合：
+                            
+                            输入（源码）：
+                            
+                            ````md
+                            **'确实'**厉害啊
+                            **"渴望"**和**"行动力"**的能量
+                            厉害啊**'确实'**
+                            *'确实'*厉害啊
+                            **‘确实’**厉害啊
+                            ````
+                            
+                            渲染效果：
+                            
+                            1. **'确实'**厉害啊
+                            2. **"渴望"**和**"行动力"**的能量
+                            3. 厉害啊**'确实'**
+                            4. *'确实'*厉害啊
+                            5. **‘确实’**厉害啊
+                        """.trimIndent()
+                    )
+                }
+            ),
+            PreviewItem(
                 id = "cjk_book_title",
                 title = "书名号中的粗体",
                 content = {

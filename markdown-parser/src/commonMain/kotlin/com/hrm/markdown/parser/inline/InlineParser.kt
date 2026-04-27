@@ -677,25 +677,37 @@ private class InlineParserInstance(
         val charAfter = if (scanner.pos < input.length) input[scanner.pos] else '\n'
 
         // ── CJK 本地化优化 ──
-        // 将全角标点视为等同于 Unicode 标点进行 flanking 判断，确保：
+        // 将全角标点视为等同于 Unicode 标点进行 flanking 判断，并将 CJK 字符视为边界，
+        // 以修复「标点 + CJK」紧邻时强调/粗体无法闭合的问题（CommonMark flanking 规则对 CJK 不友好）。
+        //
+        // 典型问题：
+        // - `**'确实'**厉害啊`：closer 前是 `'`(punct)，closer 后是 `厉`(CJK)，按原规则不算 right-flanking
+        // - `厉害啊**'确实'**`：opener 前是 `啊`(CJK)，opener 后是 `'`(punct)，按原规则不算 left-flanking
+        //
+        // 预期行为（更符合中文排版直觉）是把 CJK 当作“词边界”来参与 flanking 判断。
+        //
+        // 同时将全角空格（\u3000）视为空白，避免在中文排版中被误判为非空白。
         // - `*中文*。` 中 `*` 在全角句号前正确识别为右侧 flanking
         // - `「*中文*」` 中 `*` 在全角引号边界正确开启/关闭强调
         // - `*中文*，继续` 等场景正常工作
-        // 同时将全角空格（\u3000）视为空白，避免在中文排版中被误判为非空白。
         val beforeIsPunct = CharacterUtils.isUnicodePunctuation(charBefore) ||
                 CharacterUtils.isFullWidthPunctuation(charBefore)
         val afterIsPunct = CharacterUtils.isUnicodePunctuation(charAfter) ||
                 CharacterUtils.isFullWidthPunctuation(charAfter)
+        val beforeIsCJK = CharacterUtils.isCJK(charBefore)
+        val afterIsCJK = CharacterUtils.isCJK(charAfter)
 
         val leftFlanking = !CharacterUtils.isUnicodeWhitespace(charAfter) &&
                 (!afterIsPunct ||
                         CharacterUtils.isUnicodeWhitespace(charBefore) ||
-                        beforeIsPunct)
+                        beforeIsPunct ||
+                        beforeIsCJK)
 
         val rightFlanking = !CharacterUtils.isUnicodeWhitespace(charBefore) &&
                 (!beforeIsPunct ||
                         CharacterUtils.isUnicodeWhitespace(charAfter) ||
-                        afterIsPunct)
+                        afterIsPunct ||
+                        afterIsCJK)
 
         val canOpen = if (delimChar == '_') {
             leftFlanking && (!rightFlanking || beforeIsPunct)
